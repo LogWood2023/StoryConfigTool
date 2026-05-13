@@ -405,7 +405,7 @@ export const useStoryStore = create<AppState>((set, get) => ({
           lookup, sourceFiles: Object.keys(fileMap)
         },
         loadedFiles: Object.keys(fileMap), 
-        visibleGroups: new Set(groups.map(g => g.groupId)),
+        visibleGroups: new Set(),
         _history: [snap], _future: [], canUndo: false, canRedo: false,
         selectedFrameId: null, selectedGroupId: null, selectedParagraphIdx: null, selectedOptionBehaviorId: null, selectedTriggerGroupId: null,
         loading: false,
