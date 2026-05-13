@@ -1,0 +1,79 @@
+控制台日志：react-dom.development.js:29895 Download the React DevTools for a better development experience: 
+App.tsx:36 Warning: [antd: message] Static function can not consume context like dynamic theme. Please use 'App' component instead.
+warning @ warning.js:30
+call @ warning.js:51
+warningOnce @ warning.js:58
+(匿名) @ warning.js:12
+(匿名) @ index.js:39
+typeOpen @ index.js:193
+(匿名) @ index.js:236
+beforeUpload @ App.tsx:36
+(匿名) @ Upload.js:144
+(匿名) @ Upload.js:28
+(匿名) @ Upload.js:10
+(匿名) @ Upload.js:137
+_callee4$ @ AjaxUploader.js:217
+(匿名) @ regeneratorRuntime.js:52
+(匿名) @ regenerator.js:52
+(匿名) @ regeneratorDefine.js:11
+asyncGeneratorStep @ asyncToGenerator.js:3
+_next @ asyncToGenerator.js:17
+(匿名) @ asyncToGenerator.js:22
+(匿名) @ asyncToGenerator.js:14
+(匿名) @ AjaxUploader.js:295
+(匿名) @ AjaxUploader.js:179
+(匿名) @ AjaxUploader.js:176
+(匿名) @ AjaxUploader.js:47
+callCallback @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+invokeGuardedCallbackAndCatchFirstError @ react-dom.development.js:4291
+executeDispatch @ react-dom.development.js:9041
+processDispatchQueueItemsInOrder @ react-dom.development.js:9073
+processDispatchQueue @ react-dom.development.js:9086
+dispatchEventsForPlugins @ react-dom.development.js:9097
+anonymousCallbackTo: batchedUpdates @ react-dom.development.js:9288
+batchedUpdates$1 @ react-dom.development.js:26179
+batchedUpdates @ react-dom.development.js:3991
+dispatchEventForPluginEventSystem @ react-dom.development.js:9287
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ react-dom.development.js:6465
+dispatchEvent @ react-dom.development.js:6457
+dispatchDiscreteEvent @ react-dom.development.js:6430
+useStoryStore.ts:218 [DEBUG] loadFiles 开始执行
+useStoryStore.ts:219 [DEBUG] fileMap keys: (128) ['Achievement.xlsx', 'Activity.xlsx', 'Announcement.xlsx', 'Attribute.xlsx', 'AttrRefix.xlsx', 'AttrRefixGroup.xlsx', 'AuctionItem.xlsx', 'Avatar.xlsx', 'AvatarCombination.xlsx', 'BuffOutBattle.xlsx', 'Chat.xlsx', 'CheckCondition.xlsx', 'CloseCultivate.xlsx', 'Condition.xlsx', 'Constant.xlsx', 'CultivateChoiceEvent.xlsx', 'DanyaoType.xlsx', 'DiceGame.xlsx', 'Drop.xlsx', 'EquipBase.xlsx', 'EquipDrop.xlsx', 'EquipMake.xlsx', 'EquipMastery.xlsx', 'EquipModifer.xlsx', 'EquipModiferPool.xlsx', 'Expression.xlsx', 'FuluMake.xlsx', 'GiveItem.xlsx', 'Guild.xlsx', 'GuildCompetitionLevel.xlsx', 'GuildPosition.xlsx', 'GuildProtect.xlsx', 'GuildShop.xlsx', 'Hero.xlsx', 'Item.xlsx', 'Language.xlsx', 'LanguageStory.xlsx', 'Level.xlsx', 'LiandanLevel.xlsx', 'LiandanRecipe.xlsx', 'Lingcao_Type.xlsx', 'Lllustrated.xlsx', 'Mail.xlsx', 'Map.xlsx', 'MapArea.xlsx', 'MapEvent.xlsx', 'MapTile.xlsx', 'Mark.xlsx', 'Monster.xlsx', 'MonsterGroup.xlsx', 'Npc.xlsx', 'NpcActiveBehavior.xlsx', 'NpcBestAttri.xlsx', 'NpcBodyCreate.xlsx', 'NpcGrowRatio.xlsx', 'NpcGrowth.xlsx', 'NpcItemAttri.xlsx', 'NpcMove.xlsx', 'NpcPassiveBehavior.xlsx', 'NpcPetBestSkill.xlsx', 'NpcPresent.xlsx', 'NpcWeaponSkill.xlsx', 'ObtainItem.xlsx', 'Personality.xlsx', 'Pet.xlsx', 'PetAttrGrow.xlsx', 'PetIncubation.xlsx', 'PetSkillLoot.xlsx', 'PlantLevel.xlsx', 'QianKunChest.xlsx', 'QianKunFeed.xlsx', 'Rank.xlsx', 'RealmL.xlsx', 'RealmL_Level.xlsx', 'RealmS.xlsx', 'RelationFavor.xlsx', 'Relationship.xlsx', 'RelicBase.xlsx', 'RelicChallenge.xlsx', 'RelicModifer.xlsx', 'RelicSuit.xlsx', 'Role.xlsx', 'SceneCondition.xlsx', 'ScenePosition.xlsx', 'Shop.xlsx', 'ShopItem.xlsx', 'ShortcutKey.xlsx', 'Skill.xlsx', 'SkillEffect.xlsx', 'SkillExp.xlsx', 'SkillPractice.xlsx', 'SkillRandom.xlsx', 'SpecialPlace.xlsx', 'Stage.xlsx', 'StoryBehavior.xlsx', 'StoryFrame.xlsx', 'StoryGroup.xlsx', 'Talent.xlsx', 'Task.xlsx', 'TaskGroup.xlsx', …]
+useStoryStore.ts:239 [DEBUG] 开始第一遍扫描...
+useStoryStore.ts:241 [DEBUG] 处理文件: Achievement.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Achievement.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: Activity.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Activity.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: Announcement.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Announcement.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: Attribute.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Attribute.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: AttrRefix.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 AttrRefix.xlsx 表格 常规词条 检测类型: null
+useStoryStore.ts:246 [DEBUG] 文件 AttrRefix.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: AttrRefixGroup.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 AttrRefixGroup.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:246 [DEBUG] 文件 AttrRefixGroup.xlsx 表格 Sheet2 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: AuctionItem.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 AuctionItem.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: Avatar.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Avatar.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: AvatarCombination.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 AvatarCombination.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:246 [DEBUG] 文件 AvatarCombination.xlsx 表格 Sheet2 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: BuffOutBattle.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 BuffOutBattle.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: Chat.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Chat.xlsx 表格 Chat 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: CheckCondition.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 CheckCondition.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: CloseCultivate.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 CloseCultivate.xlsx 表格 Sheet1 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: Condition.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Condition.xlsx 表格 condition 检测类型: Condition
+useStoryStore.ts:241 [DEBUG] 处理文件: Constant.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Constant.xlsx 表格 constant 检测类型: null
+useStoryStore.ts:241 [DEBUG] 处理文件: CultivateChoiceEvent.xlsx
+useStoryStore.ts:246 [DEBUG] 文件 Culti

@@ -164,13 +164,10 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
   }
 
   const sorted = Array.from(fm.entries()).filter(([gid]) => visible.has(gid)).sort((a, b) => a[0] - b[0]);
-  console.log('[paragraphsToNodes] fm.size=', fm.size, 'sorted.length=', sorted.length, 'visible.size=', visible.size);
   const connected = getConnectedParagraphIds(frames, behaviors, visible, lookup);
 
   let gx = 0, gy = 0;
   let prevGroupEnded = false;
-  
-  console.log('[paragraphsToNodes] 开始循环, sorted=', sorted.slice(0,3));
 
   for (let i = 0; i < sorted.length; i++) {
     const [gid, gFs] = sorted[i];

@@ -95,6 +95,17 @@ const App: React.FC = () => {
           <div style={{padding:'8px 8px 4px',flexShrink:0}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
               <Text strong style={{fontSize:13}}>段落列表</Text>
+              <Button size="small" type="text" onClick={() => {
+                const allIds = filteredGroups.map(g => g.groupId);
+                const allChecked = allIds.every(id => visibleGroups.has(id));
+                if (allChecked) {
+                  allIds.forEach(id => useStoryStore.getState().toggleGroup(id));
+                } else {
+                  allIds.forEach(id => { if (!visibleGroups.has(id)) useStoryStore.getState().toggleGroup(id); });
+                }
+              }} style={{fontSize:11}}>
+                {filteredGroups.length > 0 && filteredGroups.every(g => visibleGroups.has(g.groupId)) ? '取消全选' : '全选'}
+              </Button>
             </div>
             <Input size="small" placeholder="搜索段落名/ID" prefix={<SearchOutlined/>} value={groupSearch}
               onChange={e=>setGroupSearch(e.target.value)} allowClear style={{marginBottom:4}}/>
