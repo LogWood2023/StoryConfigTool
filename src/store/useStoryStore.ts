@@ -64,16 +64,16 @@ function detectTableType(filename: string, rows: unknown[][]): string | null {
   if (bn === 'NPC') return 'Npc';
   if (bn === 'STAGE') return 'Stage';
   if (bn === 'CONDITION') return 'Condition';
+  if (bn === 'TOWN') return 'Town';
+  if (bn === 'GUILD') return 'Guild';
+  if (bn === 'TASK') return 'Task';
+  if (bn === 'MAPEVENT' || bn === 'MAP_EVENT') return 'MapEvent';
 
   if (rows.length >= 2) {
     const row0 = rows[0].map((c: unknown) => String(c).trim());
-    // 范例文本格式: 表头必须同时包含 章节/功能/角色/台词 四列
     if (row0.includes('章节') && row0.includes('功能') && row0.includes('角色') && row0.includes('台词')) return 'StoryText';
-  }
-  if (rows.length >= 5) {
-    const row0 = rows[0].map((c: unknown) => String(c).trim());
-    // 标准表: 仅通过文件名识别 (上面已处理), 内容检测仅用于范例文本格式
-    // 确保不误识别其他表 (如 ZhenyuanSuit.xlsx 有 Id/Name 但不是 NPC 表)
+    if ((row0.includes('城镇id') || row0.includes('城镇名称') || row0.includes('城镇ID')) && row0.includes('酒馆') && row0.includes('客栈')) return 'Town';
+    if (row0.includes('NPCID') || row0.includes('NPC名称')) return 'Npc';
   }
   return null;
 }
