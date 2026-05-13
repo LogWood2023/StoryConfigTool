@@ -154,13 +154,23 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
   const nodes: Node[] = [];
   const gm = new Map(groups.map(g => [g.groupId, g]));
   const fm = new Map<number, StoryFrame[]>();
-  for (const f of frames) { const l = fm.get(f.groupId) || []; l.push(f); fm.set(f.groupId, l); }
+  for (const f of frames) { 
+    const gid = Number(f.groupId);  // 确保是数字
+    if (!isNaN(gid)) {
+      const l = fm.get(gid) || []; 
+      l.push(f); 
+      fm.set(gid, l); 
+    }
+  }
 
   const sorted = Array.from(fm.entries()).filter(([gid]) => visible.has(gid)).sort((a, b) => a[0] - b[0]);
+  console.log('[paragraphsToNodes] fm.size=', fm.size, 'sorted.length=', sorted.length, 'visible.size=', visible.size);
   const connected = getConnectedParagraphIds(frames, behaviors, visible, lookup);
 
   let gx = 0, gy = 0;
   let prevGroupEnded = false;
+  
+  console.log('[paragraphsToNodes] 开始循环, sorted=', sorted.slice(0,3));
 
   for (let i = 0; i < sorted.length; i++) {
     const [gid, gFs] = sorted[i];
@@ -169,12 +179,29 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
     const color = GROUP_COLORS[ci];
     const paras = splitFramesIntoParagraphs(gFs.sort((a, b) => a.frameId - b.frameId));
 
-    // 获取所有触发方式 - 简单版本：显示所有触发方式
     const triggers = lookup.groupIdToTriggers?.[gid] || [];
-    const triggersToShow = triggers.length > 0 ? triggers : [{ type: 'default', sourceId: gid, sourceName: '', detail: '无触发方式' }];
+    
+    const needTriggerNodes: typeof triggers = [];
+    const skipTriggerNodes: typeof triggers = [];
+    
+    triggers.forEach(trigger => {
+      if (trigger.type === 'behavior' || trigger.type === 'chain') {
+        skipTriggerNodes.push(trigger);
+      } else {
+        needTriggerNodes.push(trigger);
+      }
+    });
+    
+    const shouldShowTriggerNodes = needTriggerNodes.length > 0 || triggers.length === 0;
+    
+    let triggersToShow: typeof triggers = [];
+    if (needTriggerNodes.length > 0) {
+      triggersToShow = needTriggerNodes;
+    } else if (triggers.length === 0) {
+      triggersToShow = [{ type: 'default', sourceId: gid, sourceName: '', detail: '无触发方式' }];
+    }
 
-    // 添加所有触发方式节点
-    if (paras.length > 0 && grp) {
+    if (paras.length > 0 && grp && shouldShowTriggerNodes && triggersToShow.length > 0) {
       triggersToShow.forEach((trigger, idx) => {
         nodes.push({
           id: `trigger-${gid}-${idx}`,
@@ -197,10 +224,8 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
       const pk = paraKey(gid, pi);
 
       if (pi === 0 && prevGroupEnded && !connected.has(pk)) {
-        // 如果是新行，调整y并重新添加所有触发节点
         gx = 0; gy += ROW_HEIGHT;
-        // 重新添加触发节点
-        if (grp) {
+        if (grp && shouldShowTriggerNodes && triggersToShow.length > 0) {
           triggersToShow.forEach((trigger, idx) => {
             nodes.push({
               id: `trigger-${gid}-${idx}`,
@@ -265,7 +290,6 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
         }
         gx += OPTION_COL_WIDTH;
 
-        // Stage nodes after option column
         if (stageIds.size > 0) {
           let si = 0;
           for (const stageId of stageIds) {
@@ -305,12 +329,24 @@ export function paragraphsToEdges(frames: StoryFrame[], groups: StoryGroup[], be
     const gFs = fm.get(gid)!.sort((a, b) => a.frameId - b.frameId);
     const paras = splitFramesIntoParagraphs(gFs);
 
-    // 获取所有触发方式
     const triggers = lookup.groupIdToTriggers?.[gid] || [];
-    const triggersToShow = triggers.length > 0 ? triggers : [{ type: 'default', sourceId: gid, sourceName: '', detail: '无触发方式' }];
+    
+    const needTriggerNodes: typeof triggers = [];
+    
+    triggers.forEach(trigger => {
+      if (trigger.type !== 'behavior' && trigger.type !== 'chain') {
+        needTriggerNodes.push(trigger);
+      }
+    });
+    
+    let triggersToShow: typeof triggers = [];
+    if (needTriggerNodes.length > 0) {
+      triggersToShow = needTriggerNodes;
+    } else if (triggers.length === 0) {
+      triggersToShow = [{ type: 'default', sourceId: gid, sourceName: '', detail: '无触发方式' }];
+    }
 
-    // 添加所有触发节点到第一个段落节点的连线
-    if (paras.length > 0) {
+    if (paras.length > 0 && triggersToShow.length > 0) {
       triggersToShow.forEach((trigger, idx) => {
         const color = getTriggerColor(trigger.type);
         edges.push({
@@ -640,7 +676,6 @@ export function resolveNpcDisplay(additionPar: string, lookup: LookupTable): str
 }
 
 function analyzeTriggerMethod(grp: StoryGroup, lookup: LookupTable): { type: string; summary: string; color: string } {
-  // 分析触发方式 — 根据StoryGroup.triggerCondition和SelfAddCondition
   let type = '等待触发';
   let summary = '无预设条件';
   let color = '#999';
@@ -650,7 +685,6 @@ function analyzeTriggerMethod(grp: StoryGroup, lookup: LookupTable): { type: str
   
   const parts: string[] = [];
   
-  // 解析TriggerCondition
   if (triggerCond) {
     const condParts = triggerCond.split(';').filter(p => p.trim());
     for (const part of condParts) {
@@ -658,7 +692,6 @@ function analyzeTriggerMethod(grp: StoryGroup, lookup: LookupTable): { type: str
       const id = Number(condId);
       if (!isNaN(id) && lookup.conditionIdToEntry[id]) {
         const condEntry = lookup.conditionIdToEntry[id];
-        // 只显示Type=1的特殊条件
         if (condEntry.type === 1) {
           const val = condValue ? `=${condValue}` : '';
           parts.push(`${condEntry.name}${val}`);
@@ -667,7 +700,6 @@ function analyzeTriggerMethod(grp: StoryGroup, lookup: LookupTable): { type: str
     }
   }
   
-  // 解析SelfAddCondition
   if (selfAddCond) {
     const addParts = selfAddCond.split(';').filter(p => p.trim());
     for (const part of addParts) {
@@ -685,7 +717,6 @@ function analyzeTriggerMethod(grp: StoryGroup, lookup: LookupTable): { type: str
     type = '条件触发';
     summary = parts.join('; ');
     color = '#9B59B6';
-    // 限制摘要长度
     if (summary.length > 20) {
       summary = summary.slice(0, 19) + '..';
     }

@@ -31,7 +31,21 @@ export const StoryFlow: React.FC = () => {
   const [expandedGroupId, setExpandedGroupId] = useState<number|null>(null);
   const [expandedParagraphIdx, setExpandedParagraphIdx] = useState<number|null>(null);
 
-  const groupNodes = useMemo(() => paragraphsToNodes(data.frames, data.groups, data.behaviors, visibleGroups, lookup), [data.frames, data.groups, data.behaviors, visibleGroups, lookup]);
+  const groupNodes = useMemo(() => {
+    const nodes = paragraphsToNodes(data.frames, data.groups, data.behaviors, visibleGroups, lookup);
+    // 在界面上显示调试信息
+    if (typeof document !== 'undefined') {
+      const debugEl = document.getElementById('flow-debug');
+      if (debugEl) {
+        debugEl.innerHTML = '节点数=' + nodes.length + ' | visibleGroups=' + visibleGroups.size + ' | frames=' + data.frames.length + ' | groups=' + data.groups.length;
+      }
+    }
+    console.log('[StoryFlow] 生成了', nodes.length, '个节点, visibleGroups.size=', visibleGroups.size);
+    if (nodes.length === 0 && visibleGroups.size > 0) {
+      console.log('[StoryFlow] 警告: 有可见组但没生成节点, data.frames=', data.frames.length, 'data.groups=', data.groups.length);
+    }
+    return nodes;
+  }, [data.frames, data.groups, data.behaviors, visibleGroups, lookup]);
   const groupEdges = useMemo(() => paragraphsToEdges(data.frames, data.groups, data.behaviors, visibleGroups, lookup), [data.frames, data.groups, data.behaviors, visibleGroups, lookup]);
 
   const visibleFrames = useMemo(() => {
@@ -45,6 +59,17 @@ export const StoryFlow: React.FC = () => {
 
   const cn = viewMode === 'groups' ? groupNodes : fdNodes;
   const ce = viewMode === 'groups' ? groupEdges : fdEdges;
+  
+  // 直接在JSX中显示调试信息
+  const debugInfo = '节点=' + cn.length + ' | 边=' + ce.length + ' | frames=' + data.frames.length + ' | groups=' + data.groups.length + ' | visible=' + visibleGroups.size;
+  
+  // 额外调试：检查sorted是否正确
+  const sortedForDebug = useMemo(() => {
+    if (data.frames.length === 0) return 'frames为空';
+    // 显示frames总数和前几个
+    return 'frames总数=' + data.frames.length + ' 样本: ' + data.frames.slice(0, 3).map(f => 'id=' + f.frameId + ',g=' + f.groupId).join(', ');
+  }, [data.frames]);
+  
   const [nodes, setNodes, onNodesChange] = useNodesState(cn);
   const [edges, setEdges, onEdgesChange] = useEdgesState(ce);
   useEffect(() => { setNodes(cn); setEdges(ce); }, [cn, ce, setNodes, setEdges]);
@@ -116,6 +141,7 @@ export const StoryFlow: React.FC = () => {
           <Button size="small" icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} title="重做 Ctrl+Y" />
         </Space>
       </Panel>
+      <div id="flow-debug" style={{position:'absolute',top:50,left:10,zIndex:1000,background:'yellow',padding:'4px 8px',fontSize:11,borderRadius:4}}>{debugInfo}<br/>{sortedForDebug}</div>
       <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
         onNodeClick={onNodeClick} onNodeDoubleClick={onNodeDoubleClick} nodeTypes={nodeTypes} fitView
         fitViewOptions={viewMode === 'groups' ? { padding: 0.3 } : { padding: 0.2 }} minZoom={0.1} maxZoom={2}

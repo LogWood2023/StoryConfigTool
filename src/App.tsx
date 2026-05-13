@@ -95,9 +95,6 @@ const App: React.FC = () => {
           <div style={{padding:'8px 8px 4px',flexShrink:0}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
               <Text strong style={{fontSize:13}}>段落列表</Text>
-              <Button size="small" type="text" icon={allChecked?<CheckSquareOutlined/>:<BorderOutlined/>} onClick={toggleAll}>
-                {allChecked?'取消全选':'全选'}
-              </Button>
             </div>
             <Input size="small" placeholder="搜索段落名/ID" prefix={<SearchOutlined/>} value={groupSearch}
               onChange={e=>setGroupSearch(e.target.value)} allowClear style={{marginBottom:4}}/>

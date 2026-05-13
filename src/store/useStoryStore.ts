@@ -215,6 +215,8 @@ export const useStoryStore = create<AppState>((set, get) => ({
 
   loadFiles: (fileMap) => {
     set({ loading: true });
+    console.log('[DEBUG] loadFiles 开始执行');
+    console.log('[DEBUG] fileMap keys:', Object.keys(fileMap));
     try {
       let groups: StoryGroup[] = []; let frames: StoryFrame[] = []; let behaviors: StoryBehavior[] = [];
       let npcMap: Record<string, number> = {};
@@ -234,16 +236,20 @@ export const useStoryStore = create<AppState>((set, get) => ({
       let mapEventIdToEntry: Record<number, MapEventEntry> = {};
 
       // 第一遍: 收集所有 NPC、Stage、Condition 等表数据
+      console.log('[DEBUG] 开始第一遍扫描...');
       for (const [fname, buffer] of Object.entries(fileMap)) {
+        console.log('[DEBUG] 处理文件:', fname);
         const sheets = readExcelSheets(buffer);
-        for (const [, sheetRows] of Object.entries(sheets)) {
+        for (const [sheetName, sheetRows] of Object.entries(sheets)) {
           if (!sheetRows.length) continue;
           const tt = detectTableType(fname, sheetRows);
+          console.log('[DEBUG] 文件', fname, '表格', sheetName, '检测类型:', tt);
           if (tt === 'Npc') {
             const parsed = parseNpcFullTable(sheetRows);
             npcEntries = npcEntries.concat(parsed.npcs);
             Object.assign(npcMap, parsed.npcMap);
             Object.assign(npcIdToEntry, parsed.npcIdToEntry);
+            console.log('[DEBUG] 解析NPC, 数量:', parsed.npcs.length);
           } else if (tt === 'Stage') {
             const parsed = parseStageTable(sheetRows);
             stageEntries = stageEntries.concat(parsed.stages);
@@ -256,6 +262,7 @@ export const useStoryStore = create<AppState>((set, get) => ({
             const parsed = parseTownTable(sheetRows);
             townEntries = townEntries.concat(parsed.towns);
             Object.assign(townIdToEntry, parsed.townIdToEntry);
+            console.log('[DEBUG] 解析城镇, 数量:', parsed.towns.length);
           } else if (tt === 'Guild') {
             const parsed = parseGuildTable(sheetRows);
             guildEntries = guildEntries.concat(parsed.guilds);
@@ -271,13 +278,17 @@ export const useStoryStore = create<AppState>((set, get) => ({
           }
         }
       }
+      console.log('[DEBUG] 第一遍完成: npcEntries=', npcEntries.length, 'townEntries=', townEntries.length);
 
       // 第二遍: 用完整的 npcMap 解析所有表
+      console.log('[DEBUG] 第二遍扫描开始...');
       for (const [fname, buffer] of Object.entries(fileMap)) {
+        console.log('[DEBUG] 第二遍处理文件:', fname);
         const sheets = readExcelSheets(buffer);
-        for (const [, sheetRows] of Object.entries(sheets)) {
+        for (const [sheetName, sheetRows] of Object.entries(sheets)) {
           if (!sheetRows.length) continue;
           const type = detectTableType(fname, sheetRows);
+          console.log('[DEBUG] 第二遍 文件', fname, '表格', sheetName, '检测类型:', type);
           if (type === 'Npc') { /* already done */ }
           else if (type === 'Stage') { /* already done */ }
           else if (type === 'Condition') { /* already done */ }
@@ -285,17 +296,31 @@ export const useStoryStore = create<AppState>((set, get) => ({
           else if (type === 'Guild') { /* already done */ }
           else if (type === 'Task') { /* already done */ }
           else if (type === 'MapEvent') { /* already done */ }
-          else if (type === 'StoryGroup') { groups = groups.concat(parseStoryGroup(sheetRows)); }
-          else if (type === 'StoryFrame') { frames = frames.concat(parseStoryFrame(sheetRows)); }
-          else if (type === 'StoryBehavior') { behaviors = behaviors.concat(parseStoryBehavior(sheetRows)); }
+          else if (type === 'StoryGroup') { 
+            const parsed = parseStoryGroup(sheetRows);
+            groups = groups.concat(parsed);
+            console.log('[DEBUG] 解析StoryGroup, 数量:', parsed.length);
+          }
+          else if (type === 'StoryFrame') { 
+            const parsed = parseStoryFrame(sheetRows);
+            frames = frames.concat(parsed);
+            console.log('[DEBUG] 解析StoryFrame, 数量:', parsed.length);
+          }
+          else if (type === 'StoryBehavior') { 
+            const parsed = parseStoryBehavior(sheetRows);
+            behaviors = behaviors.concat(parsed);
+            console.log('[DEBUG] 解析StoryBehavior, 数量:', parsed.length);
+          }
           else if (type === 'StoryText') {
             const lookup = { ...createDefaultLookup(), npcMap, stageIdToEntry };
             const r = parseStoryText(sheetRows, lookup);
             groups = groups.concat(r.groups); frames = frames.concat(r.frames);
             behaviors = behaviors.concat(r.behaviors);
+            console.log('[DEBUG] 解析StoryText: groups=', r.groups.length, 'frames=', r.frames.length);
           }
         }
       }
+      console.log('[DEBUG] 第二遍完成: groups=', groups.length, 'frames=', frames.length);
       const lookup = createDefaultLookup();
       if (Object.keys(npcMap).length > 0) {
         lookup.npcMap = npcMap;
@@ -329,12 +354,33 @@ export const useStoryStore = create<AppState>((set, get) => ({
       const hasNpc = Object.keys(npcMap).length > 0;
       const hasFrames = frames.length > 0;
       const hasGroups = groups.length > 0;
+      
+      // 检查重复的frameId
+      const frameIdCount: Record<number, number> = {};
+      frames.forEach(f => { frameIdCount[f.frameId] = (frameIdCount[f.frameId] || 0) + 1; });
+      const duplicateFrameIds = Object.entries(frameIdCount).filter(([, c]) => c > 1).map(([id]) => Number(id));
+      
+      // 调试：检查组1001的frame
+      const framesOf1001 = frames.filter(f => f.groupId === 1001);
+      
+      // 在UI上显示调试信息
+      let debugInfo = '调试信息: ';
+      debugInfo += '文件数=' + loadedFilenames.length + ', ';
+      debugInfo += '组数=' + groups.length + ', ';
+      debugInfo += '帧数=' + frames.length + ', ';
+      debugInfo += '组1001帧数=' + framesOf1001.length + ', ';
+      debugInfo += '重复frameId数=' + duplicateFrameIds.length;
+      if (duplicateFrameIds.length > 0) {
+        debugInfo += ' (前5个: ' + duplicateFrameIds.slice(0, 5).join(', ') + ')';
+      }
+
+      // 检查缺失的必需表
       const missing: string[] = [];
       if (!hasNpc) missing.push('Npc.xlsx (NPC名称映射)');
       if (!hasFrames) missing.push('StoryFrame.xlsx (演出帧数据)');
       if (!hasGroups) missing.push('StoryGroup.xlsx (剧情组数据)');
       const errMsg = missing.length > 0
-        ? `配置文件夹缺少以下表格:\n${missing.map(m=>'  • '+m).join('\n')}\n\n已加载: ${loadedFilenames.join(', ') || '(无)'}`
+        ? '配置文件夹缺少以下表格:\n' + missing.map(m=>'  • '+m).join('\n') + '\n\n已加载: ' + (loadedFilenames.join(', ') || '(无)')
         : null;
 
       const snap: Snapshot = {
@@ -358,7 +404,8 @@ export const useStoryStore = create<AppState>((set, get) => ({
           tasks: taskEntries, mapEvents: mapEventEntries,
           lookup, sourceFiles: Object.keys(fileMap)
         },
-        loadedFiles: Object.keys(fileMap), visibleGroups: new Set(),
+        loadedFiles: Object.keys(fileMap), 
+        visibleGroups: new Set(groups.map(g => g.groupId)),
         _history: [snap], _future: [], canUndo: false, canRedo: false,
         selectedFrameId: null, selectedGroupId: null, selectedParagraphIdx: null, selectedOptionBehaviorId: null, selectedTriggerGroupId: null,
         loading: false,
