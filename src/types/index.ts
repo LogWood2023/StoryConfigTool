@@ -145,6 +145,11 @@ export interface TriggerSourceInfo {
   sourceId: number;
   sourceName: string;
   detail: string;
+  townId?: number;
+  townName?: string;
+  npcPosition?: string;
+  npcId?: number;
+  npcName?: string;
 }
 
 // ============================================================

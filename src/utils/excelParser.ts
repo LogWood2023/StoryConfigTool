@@ -474,17 +474,54 @@ export function analyzeTriggerSources(
     result[groupId].push(info);
   };
 
-  // 游戏初始剧情（2001）
-  addTrigger(2001, { type: 'init', sourceId: 0, sourceName: '游戏初始', detail: '游戏开始时默认触发' });
+  const npcFields = [
+    { field: 'PubNpc' as const, type: 'pub' as const, name: '酒馆', colName: 'PubNpc' },
+    { field: 'HotelNpc' as const, type: 'hotel' as const, name: '客栈', colName: 'HotelNpc' },
+    { field: 'SmithyNpc' as const, type: 'smithy' as const, name: '铁匠', colName: 'SmithyNpc' },
+    { field: 'ClothesNpc' as const, type: 'clothes' as const, name: '布坊', colName: 'ClothesNpc' },
+    { field: 'DanFuNpc' as const, type: 'danfu' as const, name: '丹符', colName: 'DanFuNpc' },
+  ];
 
-  // 从NPC表分析NPC对话触发
-  for (const npc of npcs) {
-    if (npc.story) {
-      const groupIds = extractGroupIds(npc.story);
-      for (const gid of groupIds) {
-        addTrigger(gid, { type: 'npc', sourceId: npc.id, sourceName: npc.name, detail: 'NPC对话触发' });
+  function findNpcInTowns(npcId: number): { town: TownEntry; position: string; positionType: string } | null {
+    for (const town of towns) {
+      for (const npcField of npcFields) {
+        if (town[npcField.field] === npcId) {
+          return { town, position: npcField.name, positionType: npcField.type };
+        }
       }
     }
+    return null;
+  }
+
+  for (const npc of npcs) {
+    if (!npc.story) continue;
+    const groupIds = extractGroupIds(npc.story);
+    for (const gid of groupIds) {
+      const townInfo = findNpcInTowns(npc.id);
+      if (townInfo) {
+        addTrigger(gid, {
+          type: townInfo.positionType,
+          sourceId: npc.id,
+          sourceName: townInfo.town.name,
+          detail: `访问${townInfo.town.name}的${townInfo.position}`,
+          townId: townInfo.town.id,
+          townName: townInfo.town.name,
+          npcPosition: townInfo.position,
+          npcId: npc.id,
+          npcName: npc.name,
+        });
+      } else {
+        addTrigger(gid, {
+          type: 'npc',
+          sourceId: npc.id,
+          sourceName: npc.name,
+          detail: 'NPC无法访问',
+          npcId: npc.id,
+          npcName: npc.name,
+        });
+      }
+    }
+
     if (npc.function) {
       const funcParts = npc.function.split(';').filter(p => p.trim());
       for (const part of funcParts) {
@@ -492,55 +529,44 @@ export function analyzeTriggerSources(
         if (funcType === '3' && param) {
           const gid = Number(param);
           if (!isNaN(gid) && gid > 0) {
-            addTrigger(gid, { type: 'npc', sourceId: npc.id, sourceName: npc.name, detail: 'NPC按钮触发' });
+            const townInfo = findNpcInTowns(npc.id);
+            if (townInfo) {
+              addTrigger(gid, {
+                type: townInfo.positionType,
+                sourceId: npc.id,
+                sourceName: townInfo.town.name,
+                detail: `访问${townInfo.town.name}的${townInfo.position}`,
+                townId: townInfo.town.id,
+                townName: townInfo.town.name,
+                npcPosition: townInfo.position,
+                npcId: npc.id,
+                npcName: npc.name,
+              });
+            } else {
+              addTrigger(gid, {
+                type: 'npc',
+                sourceId: npc.id,
+                sourceName: npc.name,
+                detail: 'NPC无法访问',
+                npcId: npc.id,
+                npcName: npc.name,
+              });
+            }
           }
         }
       }
     }
   }
 
-  // 从城镇表分析城镇进入和商铺NPC触发
+  // 游戏初始剧情（2001）
+  addTrigger(2001, { type: 'init', sourceId: 0, sourceName: '游戏初始', detail: '游戏开始时默认触发' });
+
+  // 从城镇表分析城镇进入触发
   for (const town of towns) {
     if (town.story) {
       const groupIds = extractGroupIds(town.story);
       for (const gid of groupIds) {
         addTrigger(gid, { type: 'town', sourceId: town.id, sourceName: town.name, detail: '进入城镇' });
-      }
-    }
-
-    // 处理城镇NPC引用
-    const npcFields = [
-      { field: 'PubNpc' as const, type: 'pub' as const, name: '酒馆' },
-      { field: 'HotelNpc' as const, type: 'hotel' as const, name: '客栈' },
-      { field: 'SmithyNpc' as const, type: 'smithy' as const, name: '铁匠铺' },
-      { field: 'ClothesNpc' as const, type: 'clothes' as const, name: '布坊' },
-      { field: 'DanFuNpc' as const, type: 'danfu' as const, name: '丹符铺' },
-    ];
-
-    for (const npcField of npcFields) {
-      const npcId = town[npcField.field];
-      if (npcId && npcId > 0) {
-        const npc = lookup.npcIdToEntry[npcId];
-        if (npc) {
-          if (npc.story) {
-            const groupIds = extractGroupIds(npc.story);
-            for (const gid of groupIds) {
-              addTrigger(gid, { type: npcField.type, sourceId: town.id, sourceName: `${town.name}-${npcField.name}`, detail: `点击${town.name}${npcField.name}，访问NPC ${npc.name}` });
-            }
-          }
-          if (npc.function) {
-            const funcParts = npc.function.split(';').filter(p => p.trim());
-            for (const part of funcParts) {
-              const [funcType, param] = part.split(',');
-              if (funcType === '3' && param) {
-                const gid = Number(param);
-                if (!isNaN(gid) && gid > 0) {
-                  addTrigger(gid, { type: npcField.type, sourceId: town.id, sourceName: `${town.name}-${npcField.name}`, detail: `点击${town.name}${npcField.name}按钮，访问NPC ${npc.name}` });
-                }
-              }
-            }
-          }
-        }
       }
     }
   }

@@ -26,6 +26,12 @@ export interface TriggerNodeData {
   triggerIcon: string;
   triggerSummary: string;
   color: string;
+  triggerDetail?: string;
+  townId?: number;
+  townName?: string;
+  npcPosition?: string;
+  npcId?: number;
+  npcName?: string;
 }
 
 const getIconComponent = (iconName: string) => {

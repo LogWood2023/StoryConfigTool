@@ -198,8 +198,12 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
       triggersToShow = [{ type: 'default', sourceId: gid, sourceName: '', detail: '无触发方式' }];
     }
 
+    const isNpcTriggerType = (t: typeof triggersToShow[0]) =>
+      ['pub', 'hotel', 'smithy', 'clothes', 'danfu'].includes(t?.type || '');
+
     if (paras.length > 0 && grp && shouldShowTriggerNodes && triggersToShow.length > 0) {
       triggersToShow.forEach((trigger, idx) => {
+        const summary = isNpcTriggerType(trigger) ? trigger.detail : `${trigger.sourceName ? trigger.sourceName + ': ' : ''}${trigger.detail}`;
         nodes.push({
           id: `trigger-${gid}-${idx}`,
           type: 'storyTriggerNode',
@@ -208,8 +212,14 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
             groupId: gid,
             triggerType: trigger.type,
             triggerIcon: getTriggerIcon(trigger.type),
-            triggerSummary: `${trigger.sourceName ? trigger.sourceName + ': ' : ''}${trigger.detail}`,
+            triggerSummary: summary,
             color: getTriggerColor(trigger.type),
+            triggerDetail: trigger.detail,
+            townId: trigger.townId,
+            townName: trigger.townName,
+            npcPosition: trigger.npcPosition,
+            npcId: trigger.npcId,
+            npcName: trigger.npcName,
           } as Record<string, unknown>,
         });
       });
@@ -224,6 +234,7 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
         gx = 0; gy += ROW_HEIGHT;
         if (grp && shouldShowTriggerNodes && triggersToShow.length > 0) {
           triggersToShow.forEach((trigger, idx) => {
+            const summary = isNpcTriggerType(trigger) ? trigger.detail : `${trigger.sourceName ? trigger.sourceName + ': ' : ''}${trigger.detail}`;
             nodes.push({
               id: `trigger-${gid}-${idx}`,
               type: 'storyTriggerNode',
@@ -232,8 +243,14 @@ export function paragraphsToNodes(frames: StoryFrame[], groups: StoryGroup[], be
                 groupId: gid,
                 triggerType: trigger.type,
                 triggerIcon: getTriggerIcon(trigger.type),
-                triggerSummary: `${trigger.sourceName ? trigger.sourceName + ': ' : ''}${trigger.detail}`,
+                triggerSummary: summary,
                 color: getTriggerColor(trigger.type),
+                triggerDetail: trigger.detail,
+                townId: trigger.townId,
+                townName: trigger.townName,
+                npcPosition: trigger.npcPosition,
+                npcId: trigger.npcId,
+                npcName: trigger.npcName,
               } as Record<string, unknown>,
             });
           });
