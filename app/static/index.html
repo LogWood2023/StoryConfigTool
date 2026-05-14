@@ -173,12 +173,13 @@
 
         .node-conditions {
             position: absolute;
-            top: -12px;
+            bottom: calc(100% + 4px);
             left: -8px;
             display: flex;
             gap: 4px;
-            flex-wrap: wrap;
+            flex-wrap: wrap-reverse;
             max-width: 260px;
+            align-content: flex-start;
         }
 
         .condition-badge {
@@ -189,7 +190,7 @@
             padding: 2px 6px;
             border-radius: 4px;
             white-space: nowrap;
-            max-width: 140px;
+            max-width: 180px;
             overflow: hidden;
             text-overflow: ellipsis;
             box-shadow: 0 1px 3px rgba(0,0,0,0.3);
@@ -197,6 +198,41 @@
         }
 
         .condition-badge:hover { background: #f5a0b8; }
+
+        .condition-badge.error {
+            background: #f38ba8;
+            animation: pulse-error 1.5s infinite;
+        }
+
+        @keyframes pulse-error {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .condition-badge.self-add {
+            background: #a6e3a1;
+            color: #1e1e2e;
+        }
+
+        .condition-badge.self-add:hover { background: #94e2d5; }
+
+        .condition-badge.self-add.error {
+            background: #f38ba8;
+            color: #1e1e2e;
+        }
+
+        .condition-badge.self-add.error:hover { background: #f5a0b8; }
+
+        .node-selfadd-conditions {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: -8px;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            max-width: 260px;
+            justify-content: flex-end;
+        }
 
         .detail-panel {
             width: 320px;
@@ -451,10 +487,32 @@
 
             let conditionsHtml = '';
             if (group.conditions && group.conditions.length > 0) {
-                const badges = group.conditions.map(c =>
-                    `<span class="condition-badge" title="条件#${c.id}: ${escapeHtml(c.name)}" onclick="event.stopPropagation(); showConditionDetail(${c.id})">${escapeHtml(c.name)}</span>`
-                ).join('');
+                const badges = group.conditions.map(c => {
+                    const isError = c.formatError;
+                    const cls = 'condition-badge' + (isError ? ' error' : '');
+                    const prefix = isError ? '⚠ ' : '';
+                    const rangeStr = formatRange(c.min, c.max);
+                    const displayName = escapeHtml(c.name) + (rangeStr ? ` ${rangeStr}` : '');
+                    const title = `触发条件#${c.id}: ${escapeHtml(c.name)}${rangeStr ? ' ' + rangeStr : ''}${isError ? ' (格式错误)' : ''}`;
+                    const clickHandler = c.id ? `onclick="event.stopPropagation(); showConditionDetail(${c.id}, ${c.min}, ${c.max})"` : '';
+                    return `<span class="${cls}" title="${title}" ${clickHandler}>${prefix}${displayName}</span>`;
+                }).join('');
                 conditionsHtml = `<div class="node-conditions">${badges}</div>`;
+            }
+
+            let selfAddHtml = '';
+            if (group.selfAddConditions && group.selfAddConditions.length > 0) {
+                const badges = group.selfAddConditions.map(c => {
+                    const isTypeError = c.condType !== null && c.condType !== 1;
+                    const cls = 'condition-badge self-add' + (isTypeError ? ' error' : '');
+                    const prefix = isTypeError ? '⚠ ' : '';
+                    let titleParts = [`自增条件#${c.id}: ${escapeHtml(c.name)}`];
+                    if (isTypeError) titleParts.push(`(应为计数器类型=1，当前=${c.condType})`);
+                    const title = titleParts.join(' ');
+                    const clickHandler = c.id ? `onclick="event.stopPropagation(); showConditionDetail(${c.id}, null, null)"` : '';
+                    return `<span class="${cls}" title="${title}" ${clickHandler}>${prefix}${escapeHtml(c.name)}</span>`;
+                }).join('');
+                selfAddHtml = `<div class="node-selfadd-conditions">${badges}</div>`;
             }
 
             const nodeEl = document.createElement('div');
@@ -466,6 +524,7 @@
                 ${conditionsHtml}
                 <div class="node-id">#${id}</div>
                 <div class="node-name">${escapeHtml(group.name)}</div>
+                ${selfAddHtml}
             `;
             nodeEl.addEventListener('mousedown', (e) => startDrag(e, id));
             document.getElementById('contentArea').appendChild(nodeEl);
@@ -510,7 +569,7 @@
             dragState = null;
         });
 
-        async function showConditionDetail(condId) {
+        async function showConditionDetail(condId, minVal, maxVal) {
             const panel = document.getElementById('detailPanel');
             const body = document.getElementById('detailBody');
             panel.classList.add('open');
@@ -524,14 +583,21 @@
                     return;
                 }
                 const d = await res.json();
-                body.innerHTML = renderConditionDetail(d);
+                body.innerHTML = renderConditionDetail(d, minVal, maxVal);
             } catch (e) {
                 body.innerHTML = `<div style="color:#f38ba8;">网络错误: ${e.message}</div>`;
             }
         }
 
-        function renderConditionDetail(d) {
+        function formatRange(min, max) {
+            if (min === null && max === null) return '';
+            if (max === null) return `[${min}, ∞)`;
+            return `[${min}, ${max}]`;
+        }
+
+        function renderConditionDetail(d, minVal, maxVal) {
             const typeName = CONDITION_TYPES[d.type] || `未知类型(${d.type})`;
+            const rangeStr = formatRange(minVal !== undefined ? minVal : null, maxVal !== undefined ? maxVal : null);
             let html = `
                 <div class="detail-row">
                     <div class="detail-label">ID / 名字</div>
@@ -540,7 +606,15 @@
                 <div class="detail-row">
                     <div class="detail-label">类型</div>
                     <div class="detail-value">${d.type} - ${typeName}</div>
-                </div>
+                </div>`;
+            if (rangeStr) {
+                html += `
+                <div class="detail-row">
+                    <div class="detail-label">判定范围</div>
+                    <div class="detail-value">最小值: ${minVal !== null && minVal !== undefined ? minVal : '无'} / 最大值: ${maxVal !== null && maxVal !== undefined ? maxVal : '∞'}</div>
+                </div>`;
+            }
+            html += `
                 <div class="detail-section">
                     <div class="detail-label">详情</div>
                     <div class="detail-value">${renderConditionDescription(d)}</div>

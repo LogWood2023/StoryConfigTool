@@ -77,9 +77,10 @@ def parse_trigger_condition(raw_value) -> list[dict]:
                 cond_id = int(float(parts[0].strip()))
                 min_val = int(float(parts[1].strip())) if len(parts) > 1 else None
                 max_val = int(float(parts[2].strip())) if len(parts) > 2 else None
-                conditions.append({"id": cond_id, "min": min_val, "max": max_val})
+                format_error = len(parts) < 2
+                conditions.append({"id": cond_id, "min": min_val, "max": max_val, "formatError": format_error})
             except (ValueError, TypeError):
-                continue
+                conditions.append({"id": None, "min": None, "max": None, "formatError": True})
     return conditions
 
 
@@ -99,6 +100,7 @@ def read_conditions(folder_path: str) -> dict:
 
     id_col = col_map.get("id")
     name_col = col_map.get("name")
+    condition_col = col_map.get("condition")
     if id_col is None or name_col is None:
         return {}
 
@@ -115,7 +117,15 @@ def read_conditions(folder_path: str) -> dict:
         name = str(raw_name).strip() if pd.notna(raw_name) else f"条件{cid}"
         if not name or name == "nan":
             name = f"条件{cid}"
-        result[cid] = name
+        cond_type = None
+        if condition_col is not None:
+            raw_type = df.iloc[i, condition_col]
+            if pd.notna(raw_type):
+                try:
+                    cond_type = int(float(str(raw_type)))
+                except (ValueError, TypeError):
+                    pass
+        result[cid] = {"name": name, "condType": cond_type}
 
     return result
 
@@ -134,6 +144,7 @@ def read_story_groups(folder_path: str) -> list[dict]:
     id_col = col_map.get("storygroupid")
     name_col = col_map.get("name")
     trigger_col = col_map.get("triggercondition")
+    selfadd_col = col_map.get("selfaddcondition")
 
     if id_col is None or name_col is None:
         raise ValueError("StoryGroupId or Name column not found")
@@ -162,15 +173,51 @@ def read_story_groups(folder_path: str) -> list[dict]:
             raw_trigger = df.iloc[i, trigger_col]
             parsed = parse_trigger_condition(raw_trigger)
             for cond in parsed:
-                cond_name = condition_map.get(cond["id"], f"条件{cond['id']}")
-                trigger_conditions.append({
-                    "id": cond["id"],
-                    "name": cond_name,
-                    "min": cond["min"],
-                    "max": cond["max"]
-                })
+                if cond["id"] is None:
+                    trigger_conditions.append({
+                        "id": None,
+                        "name": "格式错误",
+                        "min": None,
+                        "max": None,
+                        "formatError": True
+                    })
+                else:
+                    cond_info = condition_map.get(cond["id"], {"name": f"条件{cond['id']}", "condType": None})
+                    trigger_conditions.append({
+                        "id": cond["id"],
+                        "name": cond_info["name"],
+                        "min": cond["min"],
+                        "max": cond["max"],
+                        "formatError": cond["formatError"]
+                    })
 
-        results.append({"id": story_id, "name": name, "conditions": trigger_conditions})
+        self_add_conditions = []
+        if selfadd_col is not None:
+            raw_selfadd = df.iloc[i, selfadd_col]
+            if pd.notna(raw_selfadd):
+                text = str(raw_selfadd).strip()
+                if text and text != "nan":
+                    parts = re.split(r'[,，;；\s]+', text)
+                    for p in parts:
+                        p = p.strip().strip('()')
+                        if p:
+                            try:
+                                sa_id = int(float(p))
+                                cond_info = condition_map.get(sa_id, {"name": f"条件{sa_id}", "condType": None})
+                                self_add_conditions.append({
+                                    "id": sa_id,
+                                    "name": cond_info["name"],
+                                    "condType": cond_info["condType"]
+                                })
+                            except (ValueError, TypeError):
+                                pass
+
+        results.append({
+            "id": story_id,
+            "name": name,
+            "conditions": trigger_conditions,
+            "selfAddConditions": self_add_conditions
+        })
 
     return results
 

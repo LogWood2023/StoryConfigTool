@@ -1,164 +1,85 @@
-# 灵劫变剧情录入器
+# 剧情配置工具
 
-## 项目简介
+基于 Python FastAPI + 单页 HTML 的剧情配置可视化工具，用于读取 Excel 配置表并以节点图形式展示剧情组及其条件关系。
 
-灵劫变剧情录入器是一个基于 React + TypeScript + React Flow 的可视化剧情管理系统，支持通过流程图方式展示剧情结构，并提供剧情编辑和触发方式分析功能。
+## 功能概览
+
+- **加载配置文件夹**：指定 PublicTables 目录，自动读取 StoryGroup.xlsx 和 Condition.xlsx
+- **剧情组列表**：左侧边栏展示所有剧情组，支持勾选加载到画布
+- **节点画布**：勾选的剧情组以可拖拽节点形式展示
+- **触发条件节点**（左上角，粉红色）：显示 TriggerCondition，格式为 `conditionID,min,max`
+  - 显示条件名 + 判定范围（如 `[0, ∞)`）
+  - 格式错误时标红 + ⚠ 感叹号 + 闪烁动画
+- **自增条件节点**（右下角，绿色）：显示 SelfAddCondition
+  - 如果条件的 Condition 类型不是 1（计数器），标红 + ⚠ 感叹号
+- **Condition 详情面板**：点击任意 Condition 节点，右侧弹出详情面板
+  - 显示 ID、名字、类型、判定范围
+  - 根据类型渲染不同描述（计数器、任务状态、装备、道具、关卡等）
+  - 跨表查询关联数据（Task、EquipBase、Item、Stage、Talent）
+
+## 支持的 Condition 类型
+
+| 类型 | 说明 |
+|------|------|
+| 0 | 必定满足 |
+| 1 | 计数器（当前值/总值/最大值） |
+| 2 | 角色大境界等级 |
+| 3 | 炼丹经验 |
+| 4 | 炼丹等级 |
+| 5 | 灵兽数量 |
+| 6 | 时间年数 |
+| 7 | 获得指定任务状态 → 关联 Task.xlsx |
+| 8 | 玩家拥有装备数量 → 关联 EquipBase.xlsx |
+| 9 | 玩家拥有道具数量 → 关联 Item.xlsx |
+| 10 | 指定战斗胜利次数 → 关联 Stage.xlsx |
+| 11 | 玩家性别 |
+| 12 | 获取关卡id |
+| 13 | 两个Condition相减 → 关联 Condition.xlsx |
+| 14 | 角色是否有指定天赋 → 关联 Talent.xlsx |
+| 15 | 金钱数量 |
+| 16 | 小境界等级 |
+
+## 预留接口
+
+通过 `onRefClick(table, id)` 统一入口，后续可扩展为打开对应一览面板：
+
+| 接口 | 触发场景 | 参数 |
+|------|---------|------|
+| 打开任务一览 | 类型=7，点击任务名 | `table="Task", id` |
+| 打开装备一览 | 类型=8，点击装备名 | `table="EquipBase", id` |
+| 打开物品一览 | 类型=9，点击道具名 | `table="Item", id` |
+| 打开战斗一览 | 类型=10，点击关卡名 | `table="Stage", id` |
+| 打开条件一览 | 类型=13，点击条件名 | `table="Condition", id` |
+| 打开天赋一览 | 类型=14，点击天赋名 | `table="Talent", id` |
 
 ## 技术栈
 
-- **前端框架**: React 18.3
-- **类型系统**: TypeScript 5.6
-- **构建工具**: Vite 6.0
-- **状态管理**: Zustand 5.0
-- **流程图**: ReactFlow (@xyflow/react) 12.6
-- **UI组件**: Ant Design 5.24
-- **Excel处理**: xlsx 0.18
-- **布局算法**: @dagrejs/dagre 1.1
+- **后端**：Python 3.10+, FastAPI, Uvicorn, Pandas, openpyxl
+- **前端**：纯 HTML/CSS/JS 单文件（无框架依赖）
 
-## 功能特性
-
-### ✅ 多表解析支持
-- NPC表解析
-- 城镇表解析（包含酒馆、客栈、铁匠铺、布坊、丹符铺等NPC引用）
-- 宗门表解析
-- 任务表解析
-- 地图事件表解析
-- 条件表解析
-- 阶段表解析
-
-### ✅ 触发方式分析
-- 自动分析每个剧情组的所有触发源
-- 支持15种触发类型
-- 游戏初始剧情（组2001）特殊处理
-- 建立 `groupIdToTriggers` 映射关系
-
-### ✅ 触发节点可视化
-- 在流程图中显示每个组的触发方式节点
-- 每个触发节点有特定图标和颜色
-- 垂直排列多个触发节点
-
-### ✅ 触发节点交互
-- 点击触发节点选中该剧情组
-- 右侧面板显示该组的详细条件信息
-- 显示TriggerCondition和SelfAddCondition的完整解析
-
-### ✅ 条件详情展示
-- 解析条件ID，从条件表查找名称
-- 只显示Type=1的特殊条件
-- 显示条件数值（如果有）
-- 自增条件显示"完成后+"前缀
-
-### ✅ 城镇NPC关联
-- 城镇表中的PubNpc、HotelNpc、SmithyNpc、ClothesNpc、DanFuNpc字段解析
-- 每个商铺触发有独特的图标和颜色
-
-### ✅ 用户界面
-- 左侧组列表（支持搜索、多选）
-- 中间流程图（双视图模式）
-- 右侧编辑器（根据选择显示组或帧编辑）
-- 顶部工具栏（加载、导出、刷新）
-
-### ✅ 历史记录
-- 支持撤销（Ctrl+Z）
-- 支持重做（Ctrl+Y）
-- 自动保存状态变更
-
-## 快速开始
-
-### 安装依赖
+## 启动方式
 
 ```bash
-npm install
+cd app
+python run.py
 ```
 
-### 启动开发服务器
+浏览器访问 http://127.0.0.1:8000
 
-```bash
-npm run dev
+## 项目结构
+
+```
+app/
+├── run.py          # 启动入口
+├── server.py       # FastAPI 后端（API + Excel 解析）
+└── static/
+    └── index.html  # 前端单页应用
 ```
 
-应用将在 http://localhost:5173/ 启动。
+## API 接口
 
-### 类型检查
-
-```bash
-npm run typecheck
-```
-
-### 构建生产版本
-
-```bash
-npm run build
-```
-
-## 使用说明
-
-1. **加载配置**：点击「配置」按钮加载现有剧情配置文件（多Excel文件）
-2. **加载新剧情**：点击「新剧情」按钮加载待录入的范例文本
-3. **查看流程图**：在左侧列表选择要查看的组，中间显示流程图
-4. **点击触发节点**：点击流程图左侧的触发节点，右侧显示该组的详细条件
-5. **查看选项跳转**：选项会直接连接到目标组
-6. **展开段落**：双击段落节点可查看该段落的详细帧结构
-7. **导出数据**：点击「导出」按钮将当前数据导出为Excel
-
-## 项目文档
-
-详细的项目文档请查看 [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)
-
-## 触发类型说明
-
-| 触发类型 | 图标 | 颜色 | 说明 |
-|---------|------|------|------|
-| npc | UserOutlined | #1890FF | NPC对话触发 |
-| town | HomeOutlined | #50C878 | 城镇进入触发 |
-| guild | TeamOutlined | #722ED1 | 宗门进入触发 |
-| task | FlagOutlined | #FA8C16 | 任务相关触发 |
-| mapEvent | EnvironmentOutlined | #13C2C2 | 地图事件触发 |
-| condition | FilterOutlined | #9B59B6 | 条件触发 |
-| chain | LinkOutlined | #4A90D9 | 剧情连锁触发 |
-| behavior | ThunderboltOutlined | #F5A623 | 选项行为触发 |
-| random | SwapOutlined | #EB2F96 | 随机触发 |
-| init | RocketOutlined | #E74C3C | 游戏初始化触发 |
-| pub | CoffeeOutlined | #8B4513 | 酒馆NPC触发 |
-| hotel | HomeFilled | #16A085 | 客栈NPC触发 |
-| smithy | ToolOutlined | #2C3E50 | 铁匠铺NPC触发 |
-| clothes | ShoppingOutlined | #E91E63 | 布坊NPC触发 |
-| danfu | MedicineBoxOutlined | #9C27B0 | 丹符铺NPC触发 |
-| default | RocketOutlined | #50C878 | 默认无触发 |
-
-## 推送到 GitHub
-
-请按照以下步骤将项目推送到您自己的 GitHub 仓库：
-
-### 步骤 1: 在 GitHub 上创建仓库
-
-1. 登录您的 GitHub 账号
-2. 点击右上角的 **+** 按钮，选择 **New repository**
-3. 仓库名称填写：**灵劫变剧情录入器**
-4. 选择 **Private**（私有仓库）
-5. **不要**勾选 "Initialize this repository with a README"
-6. 点击 **Create repository**
-
-### 步骤 2: 关联远程仓库并推送
-
-在项目目录下执行以下命令（将 `YOUR_USERNAME` 替换为您的 GitHub 用户名）：
-
-```bash
-git remote add origin https://github.com/YOUR_USERNAME/灵劫变剧情录入器.git
-git branch -M main
-git push -u origin main
-```
-
-### 步骤 3: 验证
-
-刷新 GitHub 仓库页面，确认代码已成功推送。
-
-## 隐私设置
-
-此仓库已设置为 **Private**（私有），只有仓库所有者（您）可以访问。其他任何人无法查看或访问此仓库中的代码。
-
-如需添加协作者，请进入 GitHub 仓库的 **Settings** → **Collaborators** 添加。
-
-## License
-
-此项目仅供个人/团队内部使用。
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | /api/set-folder | 设置配置文件夹路径 |
+| GET | /api/story-groups | 获取所有剧情组（含条件数据） |
+| GET | /api/condition/{id} | 获取 Condition 详情（含跨表查询） |
