@@ -326,6 +326,266 @@
             color: #45475a;
         }
 
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal-window {
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 12px;
+            width: 90vw;
+            max-width: 900px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid #313244;
+            flex-shrink: 0;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #cdd6f4;
+        }
+
+        .modal-close {
+            cursor: pointer;
+            color: #6c7086;
+            font-size: 20px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            line-height: 1;
+        }
+
+        .modal-close:hover { background: #313244; color: #cdd6f4; }
+
+        .modal-body {
+            flex: 1;
+            overflow: hidden;
+            padding: 0;
+            display: flex;
+            gap: 0;
+        }
+
+        .modal-body::-webkit-scrollbar { width: 6px; }
+        .modal-body::-webkit-scrollbar-track { background: transparent; }
+        .modal-body::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+        .modal-left {
+            width: 200px;
+            min-width: 200px;
+            border-right: 1px solid #313244;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-left-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .modal-left-list::-webkit-scrollbar { width: 5px; }
+        .modal-left-list::-webkit-scrollbar-track { background: transparent; }
+        .modal-left-list::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+        .modal-left-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #a6adc8;
+            border-left: 3px solid transparent;
+            transition: background 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .modal-left-item:hover { background: #313244; }
+        .modal-left-item.active { background: #313244; border-left-color: #89b4fa; color: #cdd6f4; }
+
+        .modal-right {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .modal-right-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .modal-right-scroll::-webkit-scrollbar { width: 6px; }
+        .modal-right-scroll::-webkit-scrollbar-track { background: transparent; }
+        .modal-right-scroll::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+        .modal-content { flex: 1; min-width: 0; }
+
+        .modal-tips {
+            width: 220px;
+            min-width: 220px;
+            background: #181825;
+            border: 1px solid #313244;
+            border-radius: 8px;
+            padding: 12px;
+            display: none;
+            flex-direction: column;
+            align-self: flex-start;
+            position: sticky;
+            top: 0;
+        }
+
+        .modal-tips.visible { display: flex; }
+
+        .modal-tips-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #f9e2af;
+            margin-bottom: 8px;
+        }
+
+        .modal-tips-content {
+            font-size: 12px;
+            color: #a6adc8;
+            line-height: 1.6;
+        }
+
+        .task-field {
+            margin-bottom: 14px;
+            padding: 10px 12px;
+            background: #181825;
+            border-radius: 6px;
+            border: 1px solid #313244;
+        }
+
+        .task-field-label {
+            font-size: 11px;
+            color: #6c7086;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .task-field-value {
+            font-size: 13px;
+            color: #cdd6f4;
+            line-height: 1.6;
+        }
+
+        .task-field-value .ref-link {
+            color: #89b4fa;
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+
+        .task-field-value .ref-link:hover { color: #b4d0fb; }
+
+        .task-field-value .error-text {
+            color: #f38ba8;
+            font-weight: 600;
+        }
+
+        .task-field.duplicate-error {
+            border-color: #f38ba8;
+            background: rgba(243, 139, 168, 0.1);
+        }
+
+        .task-editable {
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #cdd6f4;
+            font-size: 13px;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .task-editable:focus {
+            outline: none;
+            border-color: #89b4fa;
+        }
+
+        .task-select {
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #cdd6f4;
+            font-size: 13px;
+            width: 100%;
+            font-family: inherit;
+            cursor: pointer;
+        }
+
+        .task-select:focus {
+            outline: none;
+            border-color: #89b4fa;
+        }
+
+        .task-field-value .dsc-text {
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .task-field-value .dsc-text:hover { background: #313244; }
+        .task-field-value .dsc-text.selected { background: #313244; border: 1px solid #89b4fa; }
+
+        .task-trigger-line {
+            padding: 3px 0;
+            border-bottom: 1px solid #313244;
+        }
+
+        .task-trigger-line:last-child { border-bottom: none; }
+
+        .modal-footer {
+            padding: 12px 20px;
+            border-top: 1px solid #313244;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .modal-footer button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-export {
+            background: #a6e3a1;
+            color: #1e1e2e;
+        }
+
+        .btn-export:hover { background: #94e2d5; }
+
         .status-bar {
             padding: 4px 16px;
             background: #181825;
@@ -365,6 +625,33 @@
                 <span class="detail-close" onclick="closeDetail()">×</span>
             </div>
             <div class="detail-body" id="detailBody"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <span class="modal-close" onclick="closeTaskModal()">×</span>
+                <span class="modal-title" id="taskModalTitle">任务一览</span>
+                <span></span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-left">
+                    <div class="modal-left-list" id="taskModalList"></div>
+                </div>
+                <div class="modal-right">
+                    <div class="modal-right-scroll">
+                        <div class="modal-content" id="taskModalContent"></div>
+                    </div>
+                    <div class="modal-tips" id="taskModalTips">
+                        <div class="modal-tips-title">提示</div>
+                        <div class="modal-tips-content" id="taskModalTipsContent"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-export" onclick="exportTaskChanges()">导出修改</button>
+            </div>
         </div>
     </div>
 
@@ -691,8 +978,310 @@
         }
 
         function onRefClick(table, id) {
-            // TODO: 接口预留，后续实现打开对应一览面板
-            setStatus(`[接口预留] 打开 ${table} #${id} 的详情`);
+            if (table === 'Task') {
+                openTaskModal(id);
+            } else if (table === 'Condition') {
+                showConditionDetail(id, null, null);
+            } else {
+                setStatus(`[接口预留] 打开 ${table} #${id} 的详情`);
+            }
+        }
+
+        let taskEditData = {};
+        let taskGroupOptions = [];
+        let realmLevelOptions = [];
+        let taskListCache = [];
+
+        async function openTaskModal(taskId) {
+            const modal = document.getElementById('taskModal');
+            const content = document.getElementById('taskModalContent');
+            const listEl = document.getElementById('taskModalList');
+            const title = document.getElementById('taskModalTitle');
+            modal.classList.add('open');
+            title.textContent = '任务一览';
+            content.innerHTML = '<div style="color:#f9e2af;padding:20px;">加载中...</div>';
+            hideTaskTips();
+            taskEditData = { taskId, changes: {} };
+
+            try {
+                const [listRes, tgRes, rlRes] = await Promise.all([
+                    taskListCache.length > 0 ? Promise.resolve(null) : fetch('/api/task-list'),
+                    fetch('/api/task-group-options'),
+                    fetch('/api/realm-level-options')
+                ]);
+                if (listRes && listRes.ok) taskListCache = await listRes.json();
+                if (tgRes.ok) taskGroupOptions = await tgRes.json();
+                if (rlRes.ok) realmLevelOptions = await rlRes.json();
+
+                renderTaskList(listEl, taskId);
+                await loadTaskDetail(taskId);
+            } catch (e) {
+                content.innerHTML = `<div style="color:#f38ba8;padding:20px;">网络错误: ${e.message}</div>`;
+            }
+        }
+
+        function renderTaskList(listEl, activeId) {
+            listEl.innerHTML = taskListCache.map(t =>
+                `<div class="modal-left-item${t.id === activeId ? ' active' : ''}" onclick="selectTask(${t.id})">[${t.id}]${escapeHtml(t.name)}</div>`
+            ).join('');
+            const activeItem = listEl.querySelector('.modal-left-item.active');
+            if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+        }
+
+        async function selectTask(taskId) {
+            taskEditData = { taskId, changes: {} };
+            const listEl = document.getElementById('taskModalList');
+            listEl.querySelectorAll('.modal-left-item').forEach(el => el.classList.remove('active'));
+            const items = listEl.querySelectorAll('.modal-left-item');
+            const idx = taskListCache.findIndex(t => t.id === taskId);
+            if (idx >= 0 && items[idx]) items[idx].classList.add('active');
+            hideTaskTips();
+            await loadTaskDetail(taskId);
+        }
+
+        async function loadTaskDetail(taskId) {
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = '<div style="color:#f9e2af;padding:20px;">加载中...</div>';
+            try {
+                const res = await fetch(`/api/task/${taskId}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    content.innerHTML = `<div style="color:#f38ba8;padding:20px;">错误: ${err.detail || '未知错误'}</div>`;
+                    return;
+                }
+                const d = await res.json();
+                taskEditData.original = d;
+                content.innerHTML = renderTaskDetail(d);
+            } catch (e) {
+                content.innerHTML = `<div style="color:#f38ba8;padding:20px;">网络错误: ${e.message}</div>`;
+            }
+        }
+
+        function closeTaskModal() {
+            document.getElementById('taskModal').classList.remove('open');
+            hideTaskTips();
+        }
+
+        function showTaskTips(text) {
+            const tips = document.getElementById('taskModalTips');
+            const tipsContent = document.getElementById('taskModalTipsContent');
+            tips.classList.add('visible');
+            tipsContent.innerHTML = text;
+        }
+
+        function hideTaskTips() {
+            document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        function exportTaskChanges() {
+            setStatus('[接口预留] 导出修改到表格 - 功能待实现');
+        }
+
+        const TASK_TYPES = { 1: '主线', 2: '支线', 3: '宗门', 4: '城镇', 5: '奇遇' };
+        const TASK_SUBTYPES = { 1: '捉拿叛徒', 2: '击杀仇敌', 3: '挑战强敌', 4: '搜集', 5: '帮助', 6: '团队', 7: '战斗', 8: '巡逻(仅宗门)', 9: '护送', 10: '探索' };
+        const DIFFICULTY_MAP = { 1: '容易', 2: '普通', 3: '较难', 4: '困难', 5: '地狱' };
+
+        function renderTaskDetail(d) {
+            const isGuildOrTown = d.taskType === 3 || d.taskType === 4;
+            let html = '';
+
+            html += taskField('ID', d.id, d.isDuplicate ? 'duplicate-error' : '', () =>
+                `<input class="task-editable" value="${d.id}" data-field="id" onchange="taskFieldChanged(this)" />`
+            );
+
+            html += taskField('名字', null, '', () =>
+                `<input class="task-editable" value="${escapeHtml(d.name || '')}" data-field="name" onchange="taskFieldChanged(this)" />`
+            );
+
+            html += taskField('任务描述文本', null, '', () =>
+                `<input class="task-editable dsc-text" value="${escapeHtml(d.dsc || '')}" data-field="dsc" onfocus="selectDsc(this)" onchange="taskFieldChanged(this)" />`
+            );
+
+            html += taskField('任务类型', null, '', () => {
+                let opts = Object.entries(TASK_TYPES).map(([k, v]) =>
+                    `<option value="${k}" ${parseInt(k) === d.taskType ? 'selected' : ''}>${v}</option>`
+                ).join('');
+                return `<select class="task-select" data-field="type" onchange="taskFieldChanged(this)">${opts}</select>`;
+            });
+
+            html += taskField('任务子类型', null, '', () => {
+                if (!isGuildOrTown) return '<span style="color:#6c7086;">/</span>';
+                let opts = Object.entries(TASK_SUBTYPES).map(([k, v]) =>
+                    `<option value="${k}" ${parseInt(k) === d.subType ? 'selected' : ''}>${v}</option>`
+                ).join('');
+                return `<select class="task-select" data-field="subType" onchange="taskFieldChanged(this)">${opts}</select>`;
+            });
+
+            html += taskField('任务分组ID和权重', null, '', () => {
+                if (!isGuildOrTown) return '<span style="color:#6c7086;">/</span>';
+                let groupSelect = '<select class="task-select" data-field="group" onchange="taskFieldChanged(this)">';
+                groupSelect += `<option value="">无</option>`;
+                taskGroupOptions.forEach(opt => {
+                    const sel = d.group && d.group.id === opt.id ? 'selected' : '';
+                    groupSelect += `<option value="${opt.id}" ${sel}>[${opt.id}]${escapeHtml(opt.name)}</option>`;
+                });
+                groupSelect += '</select>';
+                const weightVal = d.group ? (d.group.weight || 0) : '';
+                return `<div>任务分组：${groupSelect}</div><div style="margin-top:4px;">权重：<input class="task-editable" type="number" value="${weightVal}" data-field="groupWeight" onchange="taskFieldChanged(this)" style="width:60px;" /></div>`;
+            });
+
+            html += taskField('境界等级', null, '', () => {
+                if (!isGuildOrTown) return '<span style="color:#6c7086;">/</span>';
+                let rlSelect = '<select class="task-select" data-field="realmLevel" onchange="taskFieldChanged(this)">';
+                rlSelect += `<option value="">无</option>`;
+                realmLevelOptions.forEach(opt => {
+                    const sel = d.realmLevel && d.realmLevel.level === opt.id ? 'selected' : '';
+                    rlSelect += `<option value="${opt.id}" ${sel}>[${opt.id}]${escapeHtml(opt.name)}</option>`;
+                });
+                rlSelect += '</select>';
+                return rlSelect;
+            });
+
+            html += taskField('任务难度值', null, '', () => {
+                let opts = Object.entries(DIFFICULTY_MAP).map(([k, v]) =>
+                    `<option value="${k}" ${parseInt(k) === d.difficulty ? 'selected' : ''}>${v}</option>`
+                ).join('');
+                return `<select class="task-select" data-field="difficulty" onchange="taskFieldChanged(this)">${opts}</select>`;
+            });
+
+            html += taskField('倒计时/天', null, '', () =>
+                `<input class="task-editable" type="number" value="${d.countdown !== null ? d.countdown : ''}" data-field="countdown" onchange="taskFieldChanged(this)" />`
+            );
+
+            html += taskField('任务可接条件', null, '', () => renderConditionList(d.acceptCondition));
+
+            html += taskField('是否可重复领取', null, '', () => {
+                return `<select class="task-select" data-field="isRepeat" onchange="taskFieldChanged(this)">
+                    <option value="0" ${d.isRepeat !== 1 ? 'selected' : ''}>不可重复</option>
+                    <option value="1" ${d.isRepeat === 1 ? 'selected' : ''}>可重复</option>
+                </select>`;
+            });
+
+            html += taskField('是否隐藏', null, '', () => {
+                return `<select class="task-select" data-field="isHide" onchange="taskFieldChanged(this)">
+                    <option value="0" ${d.isHide !== 1 ? 'selected' : ''}>不隐藏</option>
+                    <option value="1" ${d.isHide === 1 ? 'selected' : ''}>隐藏</option>
+                </select>`;
+            });
+
+            html += taskField('任务领取后的触发', null, '', () => renderTriggerField(d.acceptTrigger));
+            html += taskField('是否可以原地交还', null, '', () => {
+                return `<select class="task-select" data-field="allowDirectReturn" onchange="taskFieldChanged(this)">
+                    <option value="0" ${d.allowDirectReturn !== 1 ? 'selected' : ''}>不可以</option>
+                    <option value="1" ${d.allowDirectReturn === 1 ? 'selected' : ''}>可以</option>
+                </select>`;
+            });
+            html += taskField('任务删除后的触发', null, '', () => renderTriggerField(d.deleteTrigger));
+            html += taskField('任务失败后的触发', null, '', () => renderTriggerField(d.failTrigger));
+            html += taskField('任务完成条件', null, '', () => renderConditionList(d.completeCondition));
+            html += taskField('任务完成回收道具', null, '', () => renderRemoveItem(d.removeItem));
+            html += taskField('任务完成奖励', null, '', () => renderReward(d.reward));
+
+            html += taskField('任务完成增加好感度', null, '', () =>
+                `<input class="task-editable" type="number" value="${d.addFavor !== null ? d.addFavor : ''}" data-field="addFavor" onchange="taskFieldChanged(this)" />`
+            );
+
+            html += taskField('任务完成触发自动领取任务ID', null, '', () => {
+                const ntId = d.nextTask ? d.nextTask.id : '';
+                const ntName = d.nextTask ? escapeHtml(d.nextTask.name) : '';
+                return `<input class="task-editable" type="number" value="${ntId}" data-field="nextTask" onchange="taskFieldChanged(this)" style="width:80px;" /><span id="nextTaskName" style="margin-left:8px;color:#a6adc8;">${ntName}</span>`;
+            });
+
+            html += taskField('任务完成后的条件处理', null, '', () => renderSelfAddCondition(d.selfAddCondition));
+            html += taskField('任务进行中的追踪点', null, '', () => renderTrackField(d.inProgressTrack));
+            html += taskField('任务完成后的追踪点', null, '', () => renderTrackField(d.completeTrack));
+
+            return html;
+        }
+
+        function taskField(label, rawValue, extraClass, renderFn) {
+            const cls = 'task-field' + (extraClass ? ' ' + extraClass : '');
+            return `<div class="${cls}">
+                <div class="task-field-label">${escapeHtml(label)}</div>
+                <div class="task-field-value">${renderFn()}</div>
+            </div>`;
+        }
+
+        function renderConditionList(conditions) {
+            if (!conditions || conditions.length === 0) return '<span style="color:#6c7086;">无</span>';
+            return conditions.map(c => {
+                if (c.formatError) return `<div class="task-trigger-line"><span class="error-text">⚠ 格式错误</span></div>`;
+                const rangeStr = formatRange(c.min, c.max);
+                return `<div class="task-trigger-line"><span class="ref-link" onclick="onRefClick('Condition', ${c.id})">[${c.id}]${escapeHtml(c.name)}</span>，${c.min !== null ? c.min : '?'}，${c.max !== null ? c.max : '∞'}</div>`;
+            }).join('');
+        }
+
+        function renderTriggerField(triggers) {
+            if (!triggers || triggers.length === 0) return '<span style="color:#6c7086;">无</span>';
+            return triggers.map(t => `<div class="task-trigger-line">${renderSingleTrigger(t)}</div>`).join('');
+        }
+
+        function renderSingleTrigger(t) {
+            switch (t.type) {
+                case 1:
+                    return `给<span class="ref-link" onclick="onRefClick('Item', ${t.itemId})">[${t.itemId}]${escapeHtml(t.itemName)}</span>${t.count}个`;
+                case 2:
+                    return `触发剧情<span class="ref-link" onclick="onRefClick('Story', ${t.storyId})">[${t.storyId}]${escapeHtml(t.storyName)}</span>`;
+                case 3:
+                    return `生成事件<span class="ref-link" onclick="onRefClick('MapEvent', ${t.eventId})">[${t.eventId}]${escapeHtml(t.eventName)}</span>，半径${t.eventRange}`;
+                case 4: {
+                    let s = `将下列计数器修改至：${t.condNum}`;
+                    if (t.conditions && t.conditions.length > 0) {
+                        s += '<br>' + t.conditions.map(c =>
+                            `<span class="ref-link" onclick="onRefClick('Condition', ${c.id})">[${c.id}]${escapeHtml(c.name)}</span>`
+                        ).join('<br>');
+                    }
+                    return s;
+                }
+                default:
+                    return `<span style="color:#6c7086;">未知触发类型 ${t.type}: ${escapeHtml(t.raw || '')}</span>`;
+            }
+        }
+
+        function renderRemoveItem(items) {
+            if (!items || items.length === 0) return '<span style="color:#6c7086;">无</span>';
+            return items.map(it =>
+                `<div class="task-trigger-line">回收<span class="ref-link" onclick="onRefClick('Item', ${it.itemId})">[${it.itemId}]${escapeHtml(it.name)}</span>${it.count}个</div>`
+            ).join('');
+        }
+
+        function renderReward(rewards) {
+            if (!rewards || rewards.length === 0) return '<span style="color:#6c7086;">无</span>';
+            return rewards.map((r, idx) =>
+                `<div class="task-trigger-line">奖励<span class="ref-link" onclick="onRefClick('Item', ${r.itemId})">[${r.itemId}]${escapeHtml(r.name)}</span><input class="task-editable" type="number" value="${r.count}" data-field="reward_${idx}_count" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个</div>`
+            ).join('');
+        }
+
+        function renderSelfAddCondition(items) {
+            if (!items || items.length === 0) return '<span style="color:#6c7086;">无</span>';
+            return items.map(c =>
+                `<div class="task-trigger-line">修改<span class="ref-link" onclick="onRefClick('Condition', ${c.id})">[${c.id}]${escapeHtml(c.name)}</span>为${c.value}</div>`
+            ).join('');
+        }
+
+        function renderTrackField(track) {
+            if (!track) return '<span style="color:#6c7086;">无</span>';
+            if (track.found === false) {
+                if (track.mapId) return `<span class="error-text">错误 (地图${track.mapId}-${track.x},${track.y})</span>`;
+                return `<span class="error-text">错误</span>`;
+            }
+            if (track.eventId) {
+                return `<span class="ref-link" onclick="onRefClick('MapEvent', ${track.eventId})">[${track.eventId}]${escapeHtml(track.eventName)}</span>-(地图${track.mapId}-${track.x},${track.y})`;
+            }
+            return '<span style="color:#6c7086;">无</span>';
+        }
+
+        function selectDsc(el) {
+            document.querySelectorAll('.dsc-text.selected').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+            showTaskTips('任务描述文本（Dsc字段）：<br><br>此字段为任务的描述信息，会显示在游戏中的任务面板上。<br><br>支持使用 {0}、{1} 等占位符引用参数。');
+        }
+
+        function taskFieldChanged(el) {
+            const field = el.dataset.field;
+            const value = el.value;
+            taskEditData.changes[field] = value;
+            setStatus(`已修改字段: ${field} = ${value}`);
         }
 
         function closeDetail() {
