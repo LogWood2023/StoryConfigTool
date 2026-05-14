@@ -1,9 +1,10 @@
 # 剧情配置工具
 
-基于 Python FastAPI + 单页 HTML 的剧情配置可视化工具，用于读取 Excel 配置表并以节点图形式展示剧情组及其条件关系。
+基于 Python FastAPI + 单页 HTML 的剧情配置可视化工具，用于读取 Excel 配置表并以节点图形式展示剧情组及其条件关系，同时提供任务编辑与导出功能。
 
 ## 功能概览
 
+### 剧情组可视化
 - **加载配置文件夹**：指定 PublicTables 目录，自动读取 StoryGroup.xlsx 和 Condition.xlsx
 - **剧情组列表**：左侧边栏展示所有剧情组，支持勾选加载到画布
 - **节点画布**：勾选的剧情组以可拖拽节点形式展示
@@ -16,6 +17,18 @@
   - 显示 ID、名字、类型、判定范围
   - 根据类型渲染不同描述（计数器、任务状态、装备、道具、关卡等）
   - 跨表查询关联数据（Task、EquipBase、Item、Stage、Talent）
+
+### 任务一览与编辑
+- **任务一览面板**：点击任务引用链接或通过条件详情打开，左侧任务列表 + 右侧详情
+- **可编辑字段**：ID、名字、描述、类型、子类型、分组、境界等级、难度、倒计时、可接条件(min/max)、完成条件(min/max)、回收道具数量、奖励数量等
+- **追踪点定位**：InProgressTrack/CompleteTrack 通过 MapEvent.xlsx 反查事件名和坐标
+- **提示面板**：聚焦描述文本时右侧显示提示信息
+
+### 保存与导出
+- **暂存修改**：在任务一览中编辑后点击"保存"按钮，修改暂存在前端内存中
+- **Ctrl+Z 撤回**：支持最多撤回 10 步保存操作，撤回时详情界面实时刷新
+- **导出按钮**：工具栏"导出"按钮将所有暂存修改写入 `app/导出文件/` 目录
+- **引用更新**：通过点击引用文字打开任务一览后保存，源引用文字自动更新
 
 ## 支持的 Condition 类型
 
@@ -39,19 +52,6 @@
 | 15 | 金钱数量 |
 | 16 | 小境界等级 |
 
-## 预留接口
-
-通过 `onRefClick(table, id)` 统一入口，后续可扩展为打开对应一览面板：
-
-| 接口 | 触发场景 | 参数 |
-|------|---------|------|
-| 打开任务一览 | 类型=7，点击任务名 | `table="Task", id` |
-| 打开装备一览 | 类型=8，点击装备名 | `table="EquipBase", id` |
-| 打开物品一览 | 类型=9，点击道具名 | `table="Item", id` |
-| 打开战斗一览 | 类型=10，点击关卡名 | `table="Stage", id` |
-| 打开条件一览 | 类型=13，点击条件名 | `table="Condition", id` |
-| 打开天赋一览 | 类型=14，点击天赋名 | `table="Talent", id` |
-
 ## 技术栈
 
 - **后端**：Python 3.10+, FastAPI, Uvicorn, Pandas, openpyxl
@@ -64,16 +64,22 @@ cd app
 python run.py
 ```
 
+或双击 `app/启动服务器.bat`
+
 浏览器访问 http://127.0.0.1:8000
 
 ## 项目结构
 
 ```
 app/
-├── run.py          # 启动入口
-├── server.py       # FastAPI 后端（API + Excel 解析）
-└── static/
-    └── index.html  # 前端单页应用
+├── run.py              # 启动入口
+├── server.py           # FastAPI 后端（API + Excel 解析 + 导出）
+├── requirements.txt    # Python 依赖
+├── 启动服务器.bat       # Windows 快捷启动
+├── static/
+│   └── index.html      # 前端单页应用
+└── 导出文件/            # 导出的修改文件（git忽略）
+配置说明/                # 配置表字段说明文档
 ```
 
 ## API 接口
@@ -83,3 +89,17 @@ app/
 | POST | /api/set-folder | 设置配置文件夹路径 |
 | GET | /api/story-groups | 获取所有剧情组（含条件数据） |
 | GET | /api/condition/{id} | 获取 Condition 详情（含跨表查询） |
+| GET | /api/task-list | 获取任务列表 |
+| GET | /api/task/{id} | 获取任务详情 |
+| GET | /api/task-group-options | 获取任务分组选项 |
+| GET | /api/realm-level-options | 获取境界等级选项 |
+| POST | /api/export | 导出修改到 app/导出文件 |
+
+## 使用流程
+
+1. 启动服务器，在工具栏输入 PublicTables 路径并点击"加载"
+2. 左侧勾选剧情组，画布上查看节点关系
+3. 点击条件节点查看详情，点击引用链接跳转到对应一览
+4. 在任务一览中编辑字段，点击"保存"暂存修改
+5. 如需撤回，按 Ctrl+Z（最多10步）
+6. 确认无误后点击工具栏"导出"按钮，修改写入 `app/导出文件/`

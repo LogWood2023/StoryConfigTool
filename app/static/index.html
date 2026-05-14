@@ -602,6 +602,7 @@
     <div class="toolbar">
         <input type="text" id="folderInput" placeholder="输入配置文件夹路径，例如：E:\work\public\data\PublicTables" />
         <button id="loadBtn" onclick="loadFolder()">加载</button>
+        <button id="exportBtn" onclick="exportAll()" style="background:#a6e3a1;">导出</button>
     </div>
 
     <div class="main-container">
@@ -650,7 +651,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-export" onclick="exportTaskChanges()">导出修改</button>
+                <button class="btn-export" onclick="saveTaskChanges()">保存</button>
             </div>
         </div>
     </div>
@@ -925,7 +926,7 @@
                 case 7: {
                     let s = '';
                     if (d.refs && d.refs.length > 0) {
-                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id}, this)">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
                     }
                     s += '<br>获得指定任务状态（没有这个任务=0，有任务没达到完成条件=1，有任务已达到完成条件=2，该任务完成过了=3）';
                     return s;
@@ -933,7 +934,7 @@
                 case 8: {
                     let s = '玩家拥有装备';
                     if (d.refs && d.refs.length > 0) {
-                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id}, this)">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
                     }
                     s += '的数量';
                     return s;
@@ -941,7 +942,7 @@
                 case 9: {
                     let s = '玩家拥有道具';
                     if (d.refs && d.refs.length > 0) {
-                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id}, this)">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
                     }
                     s += '的数量';
                     return s;
@@ -949,7 +950,7 @@
                 case 10: {
                     let s = '指定战斗';
                     if (d.refs && d.refs.length > 0) {
-                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id}, this)">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
                     }
                     s += '的胜利次数';
                     return s;
@@ -959,14 +960,14 @@
                 case 13: {
                     let s = '输出两个Condition id相减的值，第一个减去第二个';
                     if (d.refs && d.refs.length >= 2) {
-                        s += '<br>' + d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join(' - ');
+                        s += '<br>' + d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id}, this)">[${r.id}]${escapeHtml(r.name)}</span>`).join(' - ');
                     }
                     return s;
                 }
                 case 14: {
                     let s = '角色是否有';
                     if (d.refs && d.refs.length > 0) {
-                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id}, this)">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
                     }
                     s += '，有输出1，没有输出0';
                     return s;
@@ -977,8 +978,9 @@
             }
         }
 
-        function onRefClick(table, id) {
+        function onRefClick(table, id, sourceEl) {
             if (table === 'Task') {
+                taskOpenSource = sourceEl || null;
                 openTaskModal(id);
             } else if (table === 'Condition') {
                 showConditionDetail(id, null, null);
@@ -991,6 +993,10 @@
         let taskGroupOptions = [];
         let realmLevelOptions = [];
         let taskListCache = [];
+        let pendingChanges = {};
+        let undoStack = [];
+        const MAX_UNDO = 10;
+        let taskOpenSource = null;
 
         async function openTaskModal(taskId) {
             const modal = document.getElementById('taskModal');
@@ -1073,8 +1079,53 @@
             document.getElementById('taskModalTips').classList.remove('visible');
         }
 
-        function exportTaskChanges() {
-            setStatus('[接口预留] 导出修改到表格 - 功能待实现');
+        function saveTaskChanges() {
+            const taskId = taskEditData.taskId;
+            if (!taskId || Object.keys(taskEditData.changes).length === 0) {
+                setStatus('没有需要保存的修改');
+                return;
+            }
+            const key = `Task_${taskId}`;
+            const prevState = pendingChanges[key] ? JSON.parse(JSON.stringify(pendingChanges[key])) : null;
+            undoStack.push({ key, prev: prevState });
+            if (undoStack.length > MAX_UNDO) undoStack.shift();
+            if (!pendingChanges[key]) {
+                pendingChanges[key] = { file: 'Task.xlsx', taskId, original: taskEditData.original, changes: {} };
+            }
+            Object.assign(pendingChanges[key].changes, taskEditData.changes);
+            if (taskOpenSource && taskEditData.original) {
+                const newId = taskEditData.changes.id || taskEditData.original.id;
+                const newName = taskEditData.changes.name || taskEditData.original.name;
+                taskOpenSource.textContent = `[${newId}]${newName}`;
+                taskOpenSource.setAttribute('onclick', `onRefClick('Task', ${newId}, this)`);
+            }
+            taskEditData.changes = {};
+            setStatus(`任务 ${taskId} 的修改已保存（共 ${Object.keys(pendingChanges).length} 个待导出项）`);
+        }
+
+        async function exportAll() {
+            if (Object.keys(pendingChanges).length === 0) {
+                setStatus('没有待导出的修改');
+                return;
+            }
+            try {
+                const res = await fetch('/api/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ changes: pendingChanges })
+                });
+                if (res.ok) {
+                    const result = await res.json();
+                    setStatus(`导出成功：${result.message}`);
+                    pendingChanges = {};
+                    undoStack = [];
+                } else {
+                    const err = await res.json();
+                    setStatus(`导出失败: ${err.detail || '未知错误'}`);
+                }
+            } catch (e) {
+                setStatus(`导出失败: ${e.message}`);
+            }
         }
 
         const TASK_TYPES = { 1: '主线', 2: '支线', 3: '宗门', 4: '城镇', 5: '奇遇' };
@@ -1094,7 +1145,7 @@
             );
 
             html += taskField('任务描述文本', null, '', () =>
-                `<input class="task-editable dsc-text" value="${escapeHtml(d.dsc || '')}" data-field="dsc" onfocus="selectDsc(this)" onchange="taskFieldChanged(this)" />`
+                `<input class="task-editable dsc-text" value="${escapeHtml(d.dsc || '')}" data-field="dsc" onfocus="selectDsc(this)" onblur="hideTaskTips()" onchange="taskFieldChanged(this)" />`
             );
 
             html += taskField('任务类型', null, '', () => {
@@ -1148,7 +1199,7 @@
                 `<input class="task-editable" type="number" value="${d.countdown !== null ? d.countdown : ''}" data-field="countdown" onchange="taskFieldChanged(this)" />`
             );
 
-            html += taskField('任务可接条件', null, '', () => renderConditionList(d.acceptCondition));
+            html += taskField('任务可接条件', null, '', () => renderConditionList(d.acceptCondition, 'acceptCond'));
 
             html += taskField('是否可重复领取', null, '', () => {
                 return `<select class="task-select" data-field="isRepeat" onchange="taskFieldChanged(this)">
@@ -1173,7 +1224,7 @@
             });
             html += taskField('任务删除后的触发', null, '', () => renderTriggerField(d.deleteTrigger));
             html += taskField('任务失败后的触发', null, '', () => renderTriggerField(d.failTrigger));
-            html += taskField('任务完成条件', null, '', () => renderConditionList(d.completeCondition));
+            html += taskField('任务完成条件', null, '', () => renderConditionList(d.completeCondition, 'completeCond'));
             html += taskField('任务完成回收道具', null, '', () => renderRemoveItem(d.removeItem));
             html += taskField('任务完成奖励', null, '', () => renderReward(d.reward));
 
@@ -1202,12 +1253,11 @@
             </div>`;
         }
 
-        function renderConditionList(conditions) {
+        function renderConditionList(conditions, prefix) {
             if (!conditions || conditions.length === 0) return '<span style="color:#6c7086;">无</span>';
-            return conditions.map(c => {
+            return conditions.map((c, idx) => {
                 if (c.formatError) return `<div class="task-trigger-line"><span class="error-text">⚠ 格式错误</span></div>`;
-                const rangeStr = formatRange(c.min, c.max);
-                return `<div class="task-trigger-line"><span class="ref-link" onclick="onRefClick('Condition', ${c.id})">[${c.id}]${escapeHtml(c.name)}</span>，${c.min !== null ? c.min : '?'}，${c.max !== null ? c.max : '∞'}</div>`;
+                return `<div class="task-trigger-line"><span class="ref-link" onclick="onRefClick('Condition', ${c.id}, this)">[${c.id}]${escapeHtml(c.name)}</span>，<input class="task-editable" type="number" value="${c.min !== null ? c.min : ''}" data-field="${prefix}_${idx}_min" onchange="taskFieldChanged(this)" style="width:50px;" />，<input class="task-editable" type="number" value="${c.max !== null ? c.max : ''}" data-field="${prefix}_${idx}_max" onchange="taskFieldChanged(this)" style="width:50px;" /></div>`;
             }).join('');
         }
 
@@ -1219,16 +1269,16 @@
         function renderSingleTrigger(t) {
             switch (t.type) {
                 case 1:
-                    return `给<span class="ref-link" onclick="onRefClick('Item', ${t.itemId})">[${t.itemId}]${escapeHtml(t.itemName)}</span>${t.count}个`;
+                    return `给<span class="ref-link" onclick="onRefClick('Item', ${t.itemId}, this)">[${t.itemId}]${escapeHtml(t.itemName)}</span>${t.count}个`;
                 case 2:
-                    return `触发剧情<span class="ref-link" onclick="onRefClick('Story', ${t.storyId})">[${t.storyId}]${escapeHtml(t.storyName)}</span>`;
+                    return `触发剧情<span class="ref-link" onclick="onRefClick('Story', ${t.storyId}, this)">[${t.storyId}]${escapeHtml(t.storyName)}</span>`;
                 case 3:
-                    return `生成事件<span class="ref-link" onclick="onRefClick('MapEvent', ${t.eventId})">[${t.eventId}]${escapeHtml(t.eventName)}</span>，半径${t.eventRange}`;
+                    return `生成事件<span class="ref-link" onclick="onRefClick('MapEvent', ${t.eventId}, this)">[${t.eventId}]${escapeHtml(t.eventName)}</span>，半径${t.eventRange}`;
                 case 4: {
                     let s = `将下列计数器修改至：${t.condNum}`;
                     if (t.conditions && t.conditions.length > 0) {
                         s += '<br>' + t.conditions.map(c =>
-                            `<span class="ref-link" onclick="onRefClick('Condition', ${c.id})">[${c.id}]${escapeHtml(c.name)}</span>`
+                            `<span class="ref-link" onclick="onRefClick('Condition', ${c.id}, this)">[${c.id}]${escapeHtml(c.name)}</span>`
                         ).join('<br>');
                     }
                     return s;
@@ -1240,22 +1290,22 @@
 
         function renderRemoveItem(items) {
             if (!items || items.length === 0) return '<span style="color:#6c7086;">无</span>';
-            return items.map(it =>
-                `<div class="task-trigger-line">回收<span class="ref-link" onclick="onRefClick('Item', ${it.itemId})">[${it.itemId}]${escapeHtml(it.name)}</span>${it.count}个</div>`
+            return items.map((it, idx) =>
+                `<div class="task-trigger-line">回收<span class="ref-link" onclick="onRefClick('Item', ${it.itemId}, this)">[${it.itemId}]${escapeHtml(it.name)}</span><input class="task-editable" type="number" value="${it.count}" data-field="removeItem_${idx}_count" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个</div>`
             ).join('');
         }
 
         function renderReward(rewards) {
             if (!rewards || rewards.length === 0) return '<span style="color:#6c7086;">无</span>';
             return rewards.map((r, idx) =>
-                `<div class="task-trigger-line">奖励<span class="ref-link" onclick="onRefClick('Item', ${r.itemId})">[${r.itemId}]${escapeHtml(r.name)}</span><input class="task-editable" type="number" value="${r.count}" data-field="reward_${idx}_count" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个</div>`
+                `<div class="task-trigger-line">奖励<span class="ref-link" onclick="onRefClick('Item', ${r.itemId}, this)">[${r.itemId}]${escapeHtml(r.name)}</span><input class="task-editable" type="number" value="${r.count}" data-field="reward_${idx}_count" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个</div>`
             ).join('');
         }
 
         function renderSelfAddCondition(items) {
             if (!items || items.length === 0) return '<span style="color:#6c7086;">无</span>';
             return items.map(c =>
-                `<div class="task-trigger-line">修改<span class="ref-link" onclick="onRefClick('Condition', ${c.id})">[${c.id}]${escapeHtml(c.name)}</span>为${c.value}</div>`
+                `<div class="task-trigger-line">修改<span class="ref-link" onclick="onRefClick('Condition', ${c.id}, this)">[${c.id}]${escapeHtml(c.name)}</span>为${c.value}</div>`
             ).join('');
         }
 
@@ -1266,7 +1316,7 @@
                 return `<span class="error-text">错误</span>`;
             }
             if (track.eventId) {
-                return `<span class="ref-link" onclick="onRefClick('MapEvent', ${track.eventId})">[${track.eventId}]${escapeHtml(track.eventName)}</span>-(地图${track.mapId}-${track.x},${track.y})`;
+                return `<span class="ref-link" onclick="onRefClick('MapEvent', ${track.eventId}, this)">[${track.eventId}]${escapeHtml(track.eventName)}</span>-(地图${track.mapId}-${track.x},${track.y})`;
             }
             return '<span style="color:#6c7086;">无</span>';
         }
@@ -1296,6 +1346,26 @@
 
         document.getElementById('folderInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') loadFolder();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'z') {
+                e.preventDefault();
+                if (undoStack.length === 0) {
+                    setStatus('没有可撤回的操作');
+                    return;
+                }
+                const action = undoStack.pop();
+                if (action.prev === null) {
+                    delete pendingChanges[action.key];
+                } else {
+                    pendingChanges[action.key] = action.prev;
+                }
+                setStatus(`已撤回（剩余 ${undoStack.length} 步可撤回，${Object.keys(pendingChanges).length} 个待导出项）`);
+                if (taskEditData.taskId && document.getElementById('taskModal').classList.contains('open')) {
+                    loadTaskDetail(taskEditData.taskId);
+                }
+            }
         });
     </script>
 </body>

@@ -2,9 +2,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from typing import Dict, Any
 import pandas as pd
 import re
 import os
+import shutil
+from openpyxl import load_workbook
 
 app = FastAPI()
 
@@ -473,15 +476,14 @@ def lookup_map_events(folder_path: str) -> tuple[dict, dict]:
     except Exception:
         df = pd.read_excel(file_path, sheet_name=0, header=None)
 
-    _, col_map, data_start = find_header_and_data_start(df, "Id")
+    _, col_map, data_start = find_header_and_data_start(df, "EventId")
     if col_map is None:
         return {}, {}
 
-    id_col = col_map.get("id")
+    id_col = col_map.get("eventid")
     desc_col = col_map.get("desc1")
     mapid_col = col_map.get("mapid")
     pos_col = col_map.get("position")
-    eventid_col = col_map.get("eventid")
 
     by_id = {}
     by_pos = {}
@@ -515,21 +517,13 @@ def lookup_map_events(folder_path: str) -> tuple[dict, dict]:
             raw_pos = df.iloc[i, pos_col]
             position = str(raw_pos).strip() if pd.notna(raw_pos) else ""
 
-        event_id = None
-        if eventid_col is not None:
-            raw_eid = df.iloc[i, eventid_col]
-            if pd.notna(raw_eid):
-                try:
-                    event_id = int(float(str(raw_eid)))
-                except (ValueError, TypeError):
-                    pass
-
-        by_id[eid] = {"id": eid, "desc": desc, "mapId": map_id, "position": position, "eventId": event_id}
+        by_id[eid] = {"id": eid, "desc": desc, "mapId": map_id, "position": position, "eventId": eid}
 
         if map_id is not None and position:
             norm_pos = ",".join([str(int(float(p.strip()))) for p in position.split(",") if p.strip()])
             key = f"{map_id},{norm_pos}"
-            by_pos[key] = {"id": eid, "desc": desc, "eventId": event_id or eid}
+            if key not in by_pos:
+                by_pos[key] = {"id": eid, "desc": desc, "eventId": eid}
 
     return by_id, by_pos
 
@@ -907,6 +901,179 @@ async def get_realm_level_opts():
     if DATA_DIR is None:
         raise HTTPException(status_code=400, detail="No folder configured.")
     return get_realm_level_options(DATA_DIR)
+
+
+class ExportRequest(BaseModel):
+    changes: Dict[str, Any]
+
+
+FIELD_TO_COL = {
+    "id": "Id", "name": "Name", "dsc": "Dsc", "type": "Type", "subType": "SubType",
+    "group": "Group", "realmLevel": "RealmLevel", "difficulty": "Difficulty",
+    "countdown": "Countdown", "isRepeat": "IsRepeat", "isHide": "IsHide",
+    "allowDirectReturn": "AllowDirectReturn", "addFavor": "AddFavor", "nextTask": "NextTask",
+    "groupWeight": "Group",
+}
+
+
+@app.post("/api/export")
+async def export_changes(req: ExportRequest):
+    if DATA_DIR is None:
+        raise HTTPException(status_code=400, detail="No folder configured.")
+
+    export_dir = os.path.join(os.path.dirname(__file__), "导出文件")
+    os.makedirs(export_dir, exist_ok=True)
+
+    files_to_modify = {}
+    for key, item in req.changes.items():
+        file_name = item.get("file", "Task.xlsx")
+        if file_name not in files_to_modify:
+            files_to_modify[file_name] = []
+        files_to_modify[file_name].append(item)
+
+    exported_files = []
+    for file_name, items in files_to_modify.items():
+        src_path = os.path.join(DATA_DIR, file_name)
+        if not os.path.exists(src_path):
+            continue
+        dst_path = os.path.join(export_dir, file_name)
+        shutil.copy2(src_path, dst_path)
+
+        wb = load_workbook(dst_path)
+        ws = wb.active
+
+        header_row_idx = None
+        col_map = {}
+        for row_idx in range(1, min(11, ws.max_row + 1)):
+            for col_idx in range(1, ws.max_column + 1):
+                cell_val = ws.cell(row=row_idx, column=col_idx).value
+                if cell_val and str(cell_val).strip() == "Id":
+                    header_row_idx = row_idx
+                    break
+                if cell_val and str(cell_val).strip() == "EventId":
+                    header_row_idx = row_idx
+                    break
+            if header_row_idx:
+                break
+
+        if header_row_idx is None:
+            continue
+
+        for col_idx in range(1, ws.max_column + 1):
+            cell_val = ws.cell(row=header_row_idx, column=col_idx).value
+            if cell_val:
+                col_map[str(cell_val).strip()] = col_idx
+
+        data_start = header_row_idx + 1
+        for row_idx in range(header_row_idx + 1, min(header_row_idx + 5, ws.max_row + 1)):
+            id_col_idx = col_map.get("Id") or col_map.get("EventId")
+            if id_col_idx:
+                cell_val = str(ws.cell(row=row_idx, column=id_col_idx).value or "").strip().lower()
+                if cell_val in ("int", "string", "int[]", "int[][]", "string[]", "string[][]", "float", "key", "index", "key,set", "set", ""):
+                    data_start = row_idx + 1
+                else:
+                    break
+
+        id_col_idx = col_map.get("Id") or col_map.get("EventId")
+        for item in items:
+            task_id = item.get("taskId")
+            changes = item.get("changes", {})
+            if not task_id or not changes:
+                continue
+
+            target_row = None
+            for row_idx in range(data_start, ws.max_row + 1):
+                cell_val = ws.cell(row=row_idx, column=id_col_idx).value
+                if cell_val is not None:
+                    try:
+                        if int(float(str(cell_val))) == task_id:
+                            target_row = row_idx
+                            break
+                    except (ValueError, TypeError):
+                        continue
+
+            if target_row is None:
+                continue
+
+            for field, value in changes.items():
+                if field.startswith("acceptCond_") or field.startswith("completeCond_"):
+                    parts = field.split("_")
+                    prefix = parts[0]
+                    idx = int(parts[1])
+                    min_or_max = parts[2]
+                    col_name = "AcceptCondition" if prefix == "acceptCond" else "CompleteCondition"
+                    col_idx = col_map.get(col_name)
+                    if col_idx:
+                        cell_val = ws.cell(row=target_row, column=col_idx).value
+                        if cell_val:
+                            cond_list = str(cell_val).split("|")
+                            if idx < len(cond_list):
+                                cond_parts = cond_list[idx].split(",")
+                                if min_or_max == "min" and len(cond_parts) >= 2:
+                                    cond_parts[1] = str(value)
+                                elif min_or_max == "max" and len(cond_parts) >= 3:
+                                    cond_parts[2] = str(value)
+                                cond_list[idx] = ",".join(cond_parts)
+                                ws.cell(row=target_row, column=col_idx).value = "|".join(cond_list)
+                elif field.startswith("removeItem_"):
+                    parts = field.split("_")
+                    idx = int(parts[1])
+                    col_idx = col_map.get("RemoveItem")
+                    if col_idx:
+                        cell_val = ws.cell(row=target_row, column=col_idx).value
+                        if cell_val:
+                            item_list = str(cell_val).split("|")
+                            if idx < len(item_list):
+                                item_parts = item_list[idx].split(",")
+                                if len(item_parts) >= 2:
+                                    item_parts[1] = str(value)
+                                item_list[idx] = ",".join(item_parts)
+                                ws.cell(row=target_row, column=col_idx).value = "|".join(item_list)
+                elif field.startswith("reward_"):
+                    parts = field.split("_")
+                    idx = int(parts[1])
+                    col_idx = col_map.get("Reward")
+                    if col_idx:
+                        cell_val = ws.cell(row=target_row, column=col_idx).value
+                        if cell_val:
+                            reward_list = str(cell_val).split("|")
+                            if idx < len(reward_list):
+                                reward_parts = reward_list[idx].split(",")
+                                if len(reward_parts) >= 2:
+                                    reward_parts[1] = str(value)
+                                reward_list[idx] = ",".join(reward_parts)
+                                ws.cell(row=target_row, column=col_idx).value = "|".join(reward_list)
+                elif field == "groupWeight":
+                    col_idx = col_map.get("Group")
+                    if col_idx:
+                        cell_val = ws.cell(row=target_row, column=col_idx).value
+                        if cell_val:
+                            gparts = str(cell_val).split(",")
+                            if len(gparts) >= 2:
+                                gparts[1] = str(value)
+                            else:
+                                gparts.append(str(value))
+                            ws.cell(row=target_row, column=col_idx).value = ",".join(gparts)
+                elif field == "group":
+                    col_idx = col_map.get("Group")
+                    if col_idx:
+                        old_val = ws.cell(row=target_row, column=col_idx).value
+                        if old_val:
+                            gparts = str(old_val).split(",")
+                            gparts[0] = str(value)
+                            ws.cell(row=target_row, column=col_idx).value = ",".join(gparts)
+                        else:
+                            ws.cell(row=target_row, column=col_idx).value = str(value)
+                else:
+                    col_name = FIELD_TO_COL.get(field)
+                    if col_name and col_name in col_map:
+                        col_idx = col_map[col_name]
+                        ws.cell(row=target_row, column=col_idx).value = value
+
+        wb.save(dst_path)
+        exported_files.append(file_name)
+
+    return {"message": f"已导出 {len(exported_files)} 个文件到 app/导出文件", "files": exported_files}
 
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
