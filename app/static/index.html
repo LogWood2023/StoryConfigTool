@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>剧情配置工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e2e;
+            color: #cdd6f4;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #181825;
+            border-bottom: 1px solid #313244;
+        }
+
+        .toolbar input {
+            flex: 1;
+            padding: 6px 12px;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            font-size: 14px;
+        }
+
+        .toolbar input:focus {
+            outline: none;
+            border-color: #89b4fa;
+        }
+
+        .toolbar button {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #89b4fa;
+            color: #1e1e2e;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .toolbar button:hover { background: #b4d0fb; }
+        .toolbar button:active { background: #74c7ec; }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: #181825;
+            border-right: 1px solid #313244;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #a6adc8;
+            border-bottom: 1px solid #313244;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .sidebar-list::-webkit-scrollbar { width: 6px; }
+        .sidebar-list::-webkit-scrollbar-track { background: transparent; }
+        .sidebar-list::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+        .sidebar-item {
+            position: relative;
+            padding: 8px 16px 8px 12px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: background 0.15s;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .sidebar-item:hover { background: #1e1e2e; }
+        .sidebar-item.checked { background: #1e1e2e; border-left-color: #89b4fa; }
+
+        .sidebar-item input[type="checkbox"] {
+            margin-top: 3px;
+            accent-color: #89b4fa;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .sidebar-item-content { flex: 1; min-width: 0; }
+
+        .sidebar-item-id {
+            font-size: 10px;
+            color: #6c7086;
+            font-weight: 500;
+            margin-bottom: 2px;
+            font-family: "Consolas", monospace;
+        }
+
+        .sidebar-item-name {
+            font-size: 14px;
+            color: #cdd6f4;
+            line-height: 1.3;
+            word-break: break-all;
+        }
+
+        .content-area {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: #1e1e2e;
+            background-image: radial-gradient(circle, #313244 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        .node {
+            position: absolute;
+            min-width: 160px;
+            max-width: 240px;
+            background: #313244;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            padding: 12px 16px;
+            cursor: grab;
+            user-select: none;
+            transition: box-shadow 0.15s;
+        }
+
+        .node:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.3); border-color: #89b4fa; }
+        .node.dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.4); border-color: #89b4fa; z-index: 1000; }
+
+        .node-id {
+            font-size: 10px;
+            color: #89b4fa;
+            font-family: "Consolas", monospace;
+            margin-bottom: 4px;
+        }
+
+        .node-name {
+            font-size: 14px;
+            color: #cdd6f4;
+            word-break: break-all;
+        }
+
+        .node-conditions {
+            position: absolute;
+            top: -12px;
+            left: -8px;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            max-width: 260px;
+        }
+
+        .condition-badge {
+            background: #f38ba8;
+            color: #1e1e2e;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+
+        .condition-badge:hover { background: #f5a0b8; }
+
+        .detail-panel {
+            width: 320px;
+            min-width: 320px;
+            background: #181825;
+            border-left: 1px solid #313244;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detail-panel.open { display: flex; }
+
+        .detail-header {
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #a6adc8;
+            border-bottom: 1px solid #313244;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-close {
+            cursor: pointer;
+            color: #6c7086;
+            font-size: 18px;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .detail-close:hover { background: #313244; color: #cdd6f4; }
+
+        .detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .detail-body::-webkit-scrollbar { width: 6px; }
+        .detail-body::-webkit-scrollbar-track { background: transparent; }
+        .detail-body::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+        .detail-row {
+            margin-bottom: 12px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: #6c7086;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            color: #cdd6f4;
+            line-height: 1.5;
+        }
+
+        .detail-value .ref-link {
+            color: #89b4fa;
+            cursor: pointer;
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+
+        .detail-value .ref-link:hover { color: #b4d0fb; }
+
+        .detail-section {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #313244;
+        }
+
+        .empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #6c7086;
+        }
+
+        .empty-state p {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #45475a;
+        }
+
+        .status-bar {
+            padding: 4px 16px;
+            background: #181825;
+            border-top: 1px solid #313244;
+            font-size: 12px;
+            color: #6c7086;
+        }
+
+        .loading { color: #f9e2af; }
+        .error { color: #f38ba8; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <input type="text" id="folderInput" placeholder="输入配置文件夹路径，例如：E:\work\public\data\PublicTables" />
+        <button id="loadBtn" onclick="loadFolder()">加载</button>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="sidebar-header">剧情组列表</div>
+            <div class="sidebar-list" id="sidebarList">
+                <div class="empty-state" style="position:static;transform:none;">
+                    <p>请先指定配置文件夹</p>
+                </div>
+            </div>
+        </div>
+        <div class="content-area" id="contentArea">
+            <div class="empty-state" id="emptyHint">
+                <div>勾选左侧剧情组以添加节点</div>
+                <p>加载配置文件夹后，勾选左侧列表项</p>
+            </div>
+        </div>
+        <div class="detail-panel" id="detailPanel">
+            <div class="detail-header">
+                <span>条件详情</span>
+                <span class="detail-close" onclick="closeDetail()">×</span>
+            </div>
+            <div class="detail-body" id="detailBody"></div>
+        </div>
+    </div>
+
+    <div class="status-bar" id="statusBar">就绪</div>
+
+    <script>
+        let allGroups = [];
+        let nodes = {};
+        let dragState = null;
+
+        const NODE_W = 180;
+        const NODE_H = 60;
+        const GRID_GAP = 20;
+
+        const CONDITION_TYPES = {
+            0: '必定满足',
+            1: '计数器',
+            2: '角色大境界等级',
+            3: '炼丹经验',
+            4: '炼丹等级',
+            5: '灵兽数量',
+            6: '时间年数',
+            7: '获得指定任务状态',
+            8: '玩家是否拥有某个指定装备',
+            9: '玩家拥有指定道具数量',
+            10: '指定stage id的胜利次数',
+            11: '获取玩家性别',
+            12: '获取关卡id',
+            13: '输出两个Condition id相减的值',
+            14: '角色是否有指定天赋',
+            15: '玩家拥有金钱的数量',
+            16: '小境界等级'
+        };
+
+        const DATA_TYPES = { 0: '累加', 1: '当前值', 2: '最大值', 3: '最小值' };
+
+        function setStatus(text, type) {
+            const bar = document.getElementById('statusBar');
+            bar.textContent = text;
+            bar.className = 'status-bar' + (type ? ' ' + type : '');
+        }
+
+        async function loadFolder() {
+            const input = document.getElementById('folderInput');
+            const path = input.value.trim();
+            if (!path) { setStatus('请输入文件夹路径', 'error'); return; }
+
+            setStatus('正在加载...', 'loading');
+            try {
+                const setRes = await fetch('/api/set-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: path })
+                });
+                if (!setRes.ok) { const err = await setRes.json(); setStatus('错误: ' + (err.detail || '未知错误'), 'error'); return; }
+
+                const groupRes = await fetch('/api/story-groups');
+                if (!groupRes.ok) { const err = await groupRes.json(); setStatus('错误: ' + (err.detail || '未知错误'), 'error'); return; }
+
+                const data = await groupRes.json();
+                allGroups = data.groups;
+                nodes = {};
+                document.getElementById('contentArea').innerHTML = `
+                    <div class="empty-state" id="emptyHint">
+                        <div>勾选左侧剧情组以添加节点</div>
+                        <p>已加载 ${allGroups.length} 个剧情组</p>
+                    </div>`;
+                renderSidebar(allGroups);
+                closeDetail();
+                setStatus(`已加载 ${allGroups.length} 个剧情组`);
+            } catch (e) { setStatus('网络错误: ' + e.message, 'error'); }
+        }
+
+        function renderSidebar(groups) {
+            const list = document.getElementById('sidebarList');
+            if (!groups || groups.length === 0) {
+                list.innerHTML = '<div class="empty-state" style="position:static;transform:none;"><p>未找到剧情组数据</p></div>';
+                return;
+            }
+            list.innerHTML = groups.map(g => `
+                <div class="sidebar-item" data-id="${g.id}">
+                    <input type="checkbox" onchange="toggleGroup(${g.id}, this.checked, this.parentElement)" />
+                    <div class="sidebar-item-content">
+                        <div class="sidebar-item-id">#${g.id}</div>
+                        <div class="sidebar-item-name">${escapeHtml(g.name)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleGroup(id, checked, el) {
+            if (checked) { el.classList.add('checked'); addNode(id); }
+            else { el.classList.remove('checked'); removeNode(id); }
+        }
+
+        function findFreePosition() {
+            const area = document.getElementById('contentArea');
+            const cols = Math.max(1, Math.floor((area.clientWidth - GRID_GAP) / (NODE_W + GRID_GAP)));
+            const occupied = new Set(Object.values(nodes).map(n => `${n.x},${n.y}`));
+            for (let row = 0; row < 100; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const x = GRID_GAP + col * (NODE_W + GRID_GAP);
+                    const y = GRID_GAP + row * (NODE_H + GRID_GAP);
+                    if (!occupied.has(`${x},${y}`)) return { x, y };
+                }
+            }
+            return { x: GRID_GAP, y: GRID_GAP + Object.keys(nodes).length * (NODE_H + GRID_GAP) };
+        }
+
+        function addNode(id) {
+            if (nodes[id]) return;
+            const group = allGroups.find(g => g.id === id);
+            if (!group) return;
+
+            const pos = findFreePosition();
+            nodes[id] = { x: pos.x, y: pos.y, name: group.name };
+
+            const hint = document.getElementById('emptyHint');
+            if (hint) hint.remove();
+
+            let conditionsHtml = '';
+            if (group.conditions && group.conditions.length > 0) {
+                const badges = group.conditions.map(c =>
+                    `<span class="condition-badge" title="条件#${c.id}: ${escapeHtml(c.name)}" onclick="event.stopPropagation(); showConditionDetail(${c.id})">${escapeHtml(c.name)}</span>`
+                ).join('');
+                conditionsHtml = `<div class="node-conditions">${badges}</div>`;
+            }
+
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'node';
+            nodeEl.id = `node_${id}`;
+            nodeEl.style.left = pos.x + 'px';
+            nodeEl.style.top = pos.y + 'px';
+            nodeEl.innerHTML = `
+                ${conditionsHtml}
+                <div class="node-id">#${id}</div>
+                <div class="node-name">${escapeHtml(group.name)}</div>
+            `;
+            nodeEl.addEventListener('mousedown', (e) => startDrag(e, id));
+            document.getElementById('contentArea').appendChild(nodeEl);
+        }
+
+        function removeNode(id) {
+            const el = document.getElementById(`node_${id}`);
+            if (el) el.remove();
+            delete nodes[id];
+            if (Object.keys(nodes).length === 0) {
+                document.getElementById('contentArea').innerHTML = `
+                    <div class="empty-state" id="emptyHint">
+                        <div>勾选左侧剧情组以添加节点</div>
+                        <p>已加载 ${allGroups.length} 个剧情组</p>
+                    </div>`;
+            }
+        }
+
+        function startDrag(e, id) {
+            if (e.target.classList.contains('condition-badge')) return;
+            e.preventDefault();
+            const el = document.getElementById(`node_${id}`);
+            el.classList.add('dragging');
+            dragState = { id, el, offsetX: e.clientX - el.offsetLeft, offsetY: e.clientY - el.offsetTop };
+        }
+
+        document.addEventListener('mousemove', (e) => {
+            if (!dragState) return;
+            let x = e.clientX - dragState.offsetX;
+            let y = e.clientY - dragState.offsetY;
+            x = Math.max(0, x);
+            y = Math.max(0, y);
+            dragState.el.style.left = x + 'px';
+            dragState.el.style.top = y + 'px';
+            nodes[dragState.id].x = x;
+            nodes[dragState.id].y = y;
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!dragState) return;
+            dragState.el.classList.remove('dragging');
+            dragState = null;
+        });
+
+        async function showConditionDetail(condId) {
+            const panel = document.getElementById('detailPanel');
+            const body = document.getElementById('detailBody');
+            panel.classList.add('open');
+            body.innerHTML = '<div style="color:#f9e2af;">加载中...</div>';
+
+            try {
+                const res = await fetch(`/api/condition/${condId}`);
+                if (!res.ok) {
+                    const err = await res.json();
+                    body.innerHTML = `<div style="color:#f38ba8;">错误: ${err.detail || '未知错误'}</div>`;
+                    return;
+                }
+                const d = await res.json();
+                body.innerHTML = renderConditionDetail(d);
+            } catch (e) {
+                body.innerHTML = `<div style="color:#f38ba8;">网络错误: ${e.message}</div>`;
+            }
+        }
+
+        function renderConditionDetail(d) {
+            const typeName = CONDITION_TYPES[d.type] || `未知类型(${d.type})`;
+            let html = `
+                <div class="detail-row">
+                    <div class="detail-label">ID / 名字</div>
+                    <div class="detail-value">${d.id}　${escapeHtml(d.name)}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">类型</div>
+                    <div class="detail-value">${d.type} - ${typeName}</div>
+                </div>
+                <div class="detail-section">
+                    <div class="detail-label">详情</div>
+                    <div class="detail-value">${renderConditionDescription(d)}</div>
+                </div>
+            `;
+            return html;
+        }
+
+        function renderConditionDescription(d) {
+            switch (d.type) {
+                case 0: return '必定满足';
+                case 1: {
+                    const dtName = DATA_TYPES[d.dataType] || `未知(${d.dataType})`;
+                    return `数据类型：${dtName}，输出当前数据`;
+                }
+                case 2: return '输出角色大境界等级';
+                case 3: return '输出炼丹经验';
+                case 4: return '输出炼丹等级';
+                case 5: return '输出灵兽数量';
+                case 6: return '输出时间年数';
+                case 7: {
+                    let s = '';
+                    if (d.refs && d.refs.length > 0) {
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                    }
+                    s += '<br>获得指定任务状态（没有这个任务=0，有任务没达到完成条件=1，有任务已达到完成条件=2，该任务完成过了=3）';
+                    return s;
+                }
+                case 8: {
+                    let s = '玩家拥有装备';
+                    if (d.refs && d.refs.length > 0) {
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                    }
+                    s += '的数量';
+                    return s;
+                }
+                case 9: {
+                    let s = '玩家拥有道具';
+                    if (d.refs && d.refs.length > 0) {
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                    }
+                    s += '的数量';
+                    return s;
+                }
+                case 10: {
+                    let s = '指定战斗';
+                    if (d.refs && d.refs.length > 0) {
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                    }
+                    s += '的胜利次数';
+                    return s;
+                }
+                case 11: return '获取玩家性别（1=男，2=女）';
+                case 12: return '获取关卡id';
+                case 13: {
+                    let s = '输出两个Condition id相减的值，第一个减去第二个';
+                    if (d.refs && d.refs.length >= 2) {
+                        s += '<br>' + d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join(' - ');
+                    }
+                    return s;
+                }
+                case 14: {
+                    let s = '角色是否有';
+                    if (d.refs && d.refs.length > 0) {
+                        s += d.refs.map(r => `<span class="ref-link" onclick="onRefClick('${r.table}', ${r.id})">[${r.id}]${escapeHtml(r.name)}</span>`).join('、');
+                    }
+                    s += '，有输出1，没有输出0';
+                    return s;
+                }
+                case 15: return '角色拥有的金钱数量';
+                case 16: return '角色的小境界等级';
+                default: return `未知类型 ${d.type}`;
+            }
+        }
+
+        function onRefClick(table, id) {
+            // TODO: 接口预留，后续实现打开对应一览面板
+            setStatus(`[接口预留] 打开 ${table} #${id} 的详情`);
+        }
+
+        function closeDetail() {
+            document.getElementById('detailPanel').classList.remove('open');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('folderInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') loadFolder();
+        });
+    </script>
+</body>
+</html>
