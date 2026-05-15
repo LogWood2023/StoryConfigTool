@@ -81,6 +81,7 @@ app/
 ├── static/
 │   └── index.html      # 前端单页应用
 └── 导出文件/            # 导出的修改文件（git忽略）
+    └── YYYYMMDD_HHMMSS/ # 按导出时间自动创建子文件夹
 配置说明/                # 配置表字段说明文档
 ```
 
@@ -88,6 +89,7 @@ app/
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | /api/current-folder | 获取当前已配置的文件夹路径 |
 | POST | /api/set-folder | 设置配置文件夹路径 |
 | GET | /api/story-groups | 获取所有剧情组（含条件数据） |
 | GET | /api/condition/{id} | 获取 Condition 详情（含跨表查询） |
@@ -95,13 +97,13 @@ app/
 | GET | /api/task/{id} | 获取任务详情 |
 | GET | /api/task-group-options | 获取任务分组选项 |
 | GET | /api/realm-level-options | 获取境界等级选项 |
-| POST | /api/export | 导出修改到 app/导出文件 |
+| POST | /api/export | 导出修改到 app/导出文件/<时间戳>/ |
 
 ## 使用流程
 
-1. 启动服务器，在工具栏输入 PublicTables 路径并点击"加载"
+1. 启动服务器，在工具栏输入 PublicTables 路径并点击"加载"（已配置过的路径会自动恢复）
 2. 左侧勾选剧情组，画布上查看节点关系
 3. 点击条件节点查看详情，点击引用链接跳转到对应一览
 4. 在任务一览中编辑字段，点击"保存"暂存修改
 5. 如需撤回，按 Ctrl+Z（最多10步）
-6. 确认无误后点击工具栏"导出"按钮，修改写入 `app/导出文件/`
+6. 确认无误后点击工具栏"导出"按钮，修改写入 `app/导出文件/<时间戳>/`

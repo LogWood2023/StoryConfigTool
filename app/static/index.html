@@ -246,6 +246,64 @@
 
         .detail-panel.open { display: flex; }
 
+        .overview-bar {
+            width: 52px;
+            min-width: 52px;
+            background: #181825;
+            border-left: 1px solid #313244;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .overview-bar-title {
+            padding: 10px 0;
+            font-size: 11px;
+            font-weight: 600;
+            color: #6c7086;
+            text-align: center;
+            border-bottom: 1px solid #313244;
+            flex-shrink: 0;
+        }
+
+        .overview-bar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .overview-bar-list::-webkit-scrollbar { width: 4px; }
+        .overview-bar-list::-webkit-scrollbar-track { background: transparent; }
+        .overview-bar-list::-webkit-scrollbar-thumb { background: #45475a; border-radius: 2px; }
+
+        .overview-bar-btn {
+            width: 44px;
+            height: 44px;
+            border: 1px solid #313244;
+            border-radius: 8px;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.2;
+            transition: background 0.15s, border-color 0.15s;
+            padding: 2px;
+            word-break: break-all;
+        }
+
+        .overview-bar-btn:hover {
+            background: #313244;
+            border-color: #89b4fa;
+            color: #89b4fa;
+        }
+
         .detail-header {
             padding: 12px 16px;
             font-size: 13px;
@@ -730,6 +788,10 @@
             </div>
             <div class="detail-body" id="detailBody"></div>
         </div>
+        <div class="overview-bar" id="overviewBar">
+            <div class="overview-bar-title">一览</div>
+            <div class="overview-bar-list" id="overviewBarList"></div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="taskModal">
@@ -1128,7 +1190,11 @@
                 if (rlRes.ok) realmLevelOptions = await rlRes.json();
 
                 renderTaskList(listEl, taskId);
-                await loadTaskDetail(taskId);
+                if (taskId != null) {
+                    await loadTaskDetail(taskId);
+                } else {
+                    content.innerHTML = '<div style="color:#6c7086;padding:20px;">请从左侧列表选择一个任务</div>';
+                }
             } catch (e) {
                 content.innerHTML = `<div style="color:#f38ba8;padding:20px;">网络错误: ${e.message}</div>`;
             }
@@ -2002,6 +2068,33 @@
         function closeDetail() {
             document.getElementById('detailPanel').classList.remove('open');
         }
+
+        const OVERVIEW_TABLES = [
+            { key: 'Task', label: '任务' },
+            { key: 'Condition', label: '条件' },
+            { key: 'EquipBase', label: '装备' },
+            { key: 'Item', label: '道具' },
+            { key: 'Stage', label: '关卡' },
+            { key: 'Talent', label: '天赋' }
+        ];
+
+        function renderOverviewBar() {
+            const list = document.getElementById('overviewBarList');
+            list.innerHTML = OVERVIEW_TABLES.map(t =>
+                `<button class="overview-bar-btn" onclick="openOverview('${t.key}')" title="${t.label}一览">${t.label}</button>`
+            ).join('');
+        }
+
+        function openOverview(table) {
+            if (table === 'Task') {
+                taskOpenSource = null;
+                openTaskModal(null);
+            } else {
+                setStatus(`[接口预留] ${table} 一览`);
+            }
+        }
+
+        renderOverviewBar();
 
         function escapeHtml(text) {
             const div = document.createElement('div');
