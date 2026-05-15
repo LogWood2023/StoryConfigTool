@@ -59,6 +59,13 @@
         .toolbar button:hover { background: #b4d0fb; }
         .toolbar button:active { background: #74c7ec; }
 
+        .toolbar-sep {
+            width: 1px;
+            height: 20px;
+            background: #45475a;
+            flex-shrink: 0;
+        }
+
         .main-container {
             display: flex;
             flex: 1;
@@ -619,6 +626,140 @@
             border-color: #89b4fa;
         }
 
+        .equip-asset-picker {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-content: start;
+        }
+
+        .equip-asset-picker::-webkit-scrollbar { width: 6px; }
+        .equip-asset-picker::-webkit-scrollbar-track { background: transparent; }
+        .equip-asset-picker::-webkit-scrollbar-thumb { background: #45475a; border-radius: 3px; }
+
+        #equipModalTips {
+            align-self: stretch;
+            position: relative;
+            max-height: none;
+        }
+
+        .equip-asset-search-bar {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #313244;
+            margin-bottom: 4px;
+        }
+
+        .equip-asset-folder {
+            margin-bottom: 4px;
+        }
+
+        .equip-asset-folder-header {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #cdd6f4;
+            user-select: none;
+            background: #1e1e2e;
+        }
+
+        .equip-asset-folder-header:hover {
+            background: #313244;
+        }
+
+        .equip-asset-folder-header .folder-arrow {
+            margin-right: 6px;
+            font-size: 10px;
+            transition: transform 0.15s;
+        }
+
+        .equip-asset-folder-header.collapsed .folder-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .equip-asset-folder-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 6px;
+            padding: 6px 4px;
+        }
+
+        .equip-asset-folder-grid.hidden {
+            display: none;
+        }
+
+        .equip-asset-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid #313244;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+
+        .equip-asset-item:hover {
+            border-color: #89b4fa;
+        }
+
+        .equip-asset-item.selected {
+            border-color: #a6e3a1;
+            background: #1e3a2e;
+        }
+
+        .equip-asset-item img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: #11111b;
+        }
+
+        .equip-asset-item span {
+            font-size: 10px;
+            color: #a6adc8;
+            margin-top: 4px;
+            text-align: center;
+            word-break: break-all;
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #assetHoverPreview {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            padding: 8px;
+            pointer-events: none;
+        }
+        #assetHoverPreview canvas,
+        #assetHoverPreview img {
+            display: block;
+            width: 256px;
+            height: 256px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: #11111b;
+        }
+
+        .equip-id-dup {
+            background: #f38ba8 !important;
+            color: #11111b !important;
+        }
+
         .task-field {
             margin-bottom: 14px;
             padding: 10px 12px;
@@ -757,12 +898,38 @@
 
         .loading { color: #f9e2af; }
         .error { color: #f38ba8; }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: #a6e3a1;
+            color: #1e1e2e;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            z-index: 99999;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+        }
+        .toast.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
+    <script src="https://cdn.jsdelivr.net/gh/EsotericSoftware/spine-runtimes@3.8/spine-ts/build/spine-canvas.js"></script>
 </head>
 <body>
     <div class="toolbar">
-        <input type="text" id="folderInput" placeholder="输入配置文件夹路径，例如：E:\work\public\data\PublicTables" />
+        <input type="text" id="folderInput" placeholder="配置文件夹路径，例如：E:\work\public\data\PublicTables" />
         <button id="loadBtn" onclick="loadFolder()">加载</button>
+        <span class="toolbar-sep"></span>
+        <input type="text" id="assetFolderInput" placeholder="资源文件夹路径（可选）" />
+        <button id="assetLoadBtn" onclick="loadAssetFolder()">引用</button>
+        <span class="toolbar-sep"></span>
         <button id="exportBtn" onclick="exportAll()" style="background:#a6e3a1;">导出</button>
     </div>
 
@@ -825,6 +992,43 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="equipModal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <span class="modal-close" onclick="closeEquipModal()">×</span>
+                <span class="modal-title">装备一览</span>
+                <span></span>
+            </div>
+            <div class="modal-body">
+                <div class="modal-left">
+                    <div class="task-search-bar">
+                        <span class="task-search-add" onclick="addNewEquip()">＋</span>
+                        <input class="task-search-input" id="equipSearchInput" type="text" placeholder="搜索装备..." oninput="filterEquipList()" />
+                    </div>
+                    <div class="modal-left-list" id="equipModalList"></div>
+                </div>
+                <div class="modal-right">
+                    <div class="modal-right-scroll">
+                        <div class="modal-content" id="equipModalContent"></div>
+                    </div>
+                    <div class="modal-tips" id="equipModalTips">
+                        <div class="modal-tips-title">资源预览</div>
+                        <div class="equip-asset-search-bar">
+                            <input class="task-search-input" id="equipAssetSearchInput" type="text" placeholder="搜索资源..." oninput="filterEquipAssetPicker()" />
+                        </div>
+                        <div class="equip-asset-picker" id="equipAssetPicker"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-export" onclick="saveEquipChanges()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="assetHoverPreview"></div>
+    <div class="toast" id="toastMsg"></div>
+
     <div class="status-bar" id="statusBar">就绪</div>
 
     <script>
@@ -864,6 +1068,13 @@
             bar.className = 'status-bar' + (type ? ' ' + type : '');
         }
 
+        function showToast(msg) {
+            const el = document.getElementById('toastMsg');
+            el.textContent = msg;
+            el.classList.add('visible');
+            setTimeout(() => el.classList.remove('visible'), 2000);
+        }
+
         async function loadFolder() {
             const input = document.getElementById('folderInput');
             const path = input.value.trim();
@@ -893,6 +1104,21 @@
                 renderSidebar(allGroups);
                 closeDetail();
                 setStatus(`已加载 ${allGroups.length} 个剧情组`);
+            } catch (e) { setStatus('网络错误: ' + e.message, 'error'); }
+        }
+
+        async function loadAssetFolder() {
+            const input = document.getElementById('assetFolderInput');
+            const path = input.value.trim();
+            if (!path) { setStatus('请输入资源文件夹路径', 'error'); return; }
+            try {
+                const res = await fetch('/api/set-asset-folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: path })
+                });
+                if (!res.ok) { const err = await res.json(); setStatus('错误: ' + (err.detail || '未知错误'), 'error'); return; }
+                setStatus('资源文件夹已引用: ' + path);
             } catch (e) { setStatus('网络错误: ' + e.message, 'error'); }
         }
 
@@ -1154,6 +1380,8 @@
                 openTaskModal(id);
             } else if (table === 'Condition') {
                 showConditionDetail(id, null, null);
+            } else if (table === 'EquipBase') {
+                openEquipModal(id);
             } else {
                 setStatus(`[接口预留] 打开 ${table} #${id} 的详情`);
             }
@@ -1431,6 +1659,7 @@
             const listEl = document.getElementById('taskModalList');
             if (listEl) renderTaskList(listEl, taskEditData.taskId);
             setStatus(`任务 ${origId} 的修改已保存（共 ${Object.keys(pendingChanges).length} 个待导出项）`);
+            showToast('保存成功');
         }
 
         async function exportAll() {
@@ -2085,10 +2314,484 @@
             ).join('');
         }
 
+        let equipAllList = [];
+        let equipCurrentId = null;
+        let equipEditData = {};
+        let equipSpineList = [];
+        let equipTextureList = [];
+        let equipActiveField = null;
+
+        const EQUIP_GROUP_MAP = {10: '武器', 11: '防具'};
+        const EQUIP_GROUP_OPTIONS = [{v: 10, l: '武器'}, {v: 11, l: '防具'}];
+        const EQUIP_GENDER_MAP = {1: '男性', 2: '女性'};
+        const EQUIP_GENDER_OPTIONS = [{v: 1, l: '男性'}, {v: 2, l: '女性'}];
+        const EQUIP_POS_MAP = {1: '武器', 2: '衣服', 3: '护腕', 4: '鞋子', 5: '腰带', 6: '配饰'};
+        const EQUIP_POS_OPTIONS = [{v:1,l:'武器'},{v:2,l:'衣服'},{v:3,l:'护腕'},{v:4,l:'鞋子'},{v:5,l:'腰带'},{v:6,l:'配饰'}];
+        const EQUIP_TYPE_MAP = {1:'剑',2:'枪',3:'扇',4:'杖',5:'衣服',6:'护腕',7:'鞋子',8:'腰带',9:'配饰'};
+        const EQUIP_TYPE_OPTIONS = [{v:1,l:'剑'},{v:2,l:'枪'},{v:3,l:'扇'},{v:4,l:'杖'},{v:5,l:'衣服'},{v:6,l:'护腕'},{v:7,l:'鞋子'},{v:8,l:'腰带'},{v:9,l:'配饰'}];
+
+        async function openEquipModal(id) {
+            document.getElementById('equipModal').style.display = 'flex';
+            equipEditData = {};
+            equipActiveField = null;
+            document.getElementById('equipModalTips').classList.remove('visible');
+            document.getElementById('equipAssetPicker').innerHTML = '';
+            equipSpineList = [];
+            equipTextureList = [];
+            try {
+                const res = await fetch('/api/equip-list');
+                if (!res.ok) { setStatus('加载装备列表失败', 'error'); return; }
+                equipAllList = await res.json();
+                renderEquipList();
+                if (id !== null) {
+                    loadEquipDetail(id);
+                } else {
+                    document.getElementById('equipModalContent').innerHTML = '<div class="empty-state">选择左侧装备查看详情</div>';
+                }
+            } catch (e) { setStatus('网络错误: ' + e.message, 'error'); }
+        }
+
+        function closeEquipModal() {
+            document.getElementById('equipModal').style.display = 'none';
+            hideAssetHoverPreview();
+        }
+
+        function renderEquipList() {
+            const list = document.getElementById('equipModalList');
+            const filter = (document.getElementById('equipSearchInput').value || '').trim().toLowerCase();
+            const idCounts = {};
+            equipAllList.forEach(e => { idCounts[e.id] = (idCounts[e.id] || 0) + 1; });
+            const filtered = equipAllList.filter(e =>
+                !filter || String(e.id).includes(filter) || (e.name || '').toLowerCase().includes(filter)
+            );
+            list.innerHTML = filtered.map(e => {
+                const dup = idCounts[e.id] > 1 ? ' equip-id-dup' : '';
+                const active = e.id === equipCurrentId ? ' active' : '';
+                return `<div class="modal-left-item${active}${dup}" onclick="loadEquipDetail(${e.id})"><span class="modal-left-item-text">[${e.id}]${escapeHtml(e.name || '')}</span><span class="modal-left-item-del" onclick="event.stopPropagation();deleteEquip(${e.id})">🗑</span></div>`;
+            }).join('');
+            const activeItem = list.querySelector('.modal-left-item.active');
+            if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+        }
+
+        function deleteEquip(equipId) {
+            if (!confirm(`是否要删除装备 [${equipId}]？`)) return;
+            const idx = equipAllList.findIndex(e => e.id === equipId);
+            if (idx !== -1) equipAllList.splice(idx, 1);
+            const key = `EquipBase_${equipId}`;
+            if (pendingChanges[key] && pendingChanges[key]._new) {
+                delete pendingChanges[key];
+            } else {
+                pendingChanges[key] = { table: 'EquipBase', originalId: equipId, _delete: true, file: 'EquipBase.xlsx' };
+            }
+            if (equipCurrentId === equipId) {
+                document.getElementById('equipModalContent').innerHTML = '<div style="color:#6c7086;padding:20px;">已删除</div>';
+                equipCurrentId = null;
+            }
+            renderEquipList();
+        }
+
+        function filterEquipList() { renderEquipList(); }
+
+        async function loadEquipDetail(id) {
+            equipCurrentId = id;
+            equipActiveField = null;
+            document.getElementById('equipModalTips').classList.remove('visible');
+            renderEquipList();
+            const key = `EquipBase_${id}`;
+            if (pendingChanges[key] && pendingChanges[key].changes) {
+                equipEditData = { ...pendingChanges[key].changes };
+                renderEquipDetail(equipEditData);
+                return;
+            }
+            try {
+                const res = await fetch(`/api/equip/${id}`);
+                if (!res.ok) { setStatus('加载装备详情失败', 'error'); return; }
+                const d = await res.json();
+                equipEditData = { ...d };
+                renderEquipDetail(d);
+            } catch (e) { setStatus('网络错误: ' + e.message, 'error'); }
+        }
+
+        function equipField(label, field, value, type, options, mapObj) {
+            const displayVal = value !== null && value !== undefined ? value : '';
+            if (type === 'select') {
+                const opts = options.map(o => `<option value="${o.v}" ${o.v == displayVal ? 'selected' : ''}>${o.l}</option>`).join('');
+                return `<div class="task-field">
+                    <div class="task-field-label">${label}</div>
+                    <select class="task-select" data-field="${field}" onchange="onEquipFieldChange(this)">
+                        <option value="">--</option>${opts}
+                    </select>
+                </div>`;
+            }
+            if (type === 'spine' || type === 'icon') {
+                return `<div class="task-field" onclick="onEquipAssetFocus('${type}', '${field}')" style="cursor:pointer;">
+                    <div class="task-field-label">${label}</div>
+                    <div style="display:flex;align-items:center;">
+                        <input class="task-editable" data-field="${field}" value="${displayVal}" onchange="onEquipFieldChange(this)" style="flex:1;" />
+                        <span style="color:#89b4fa;font-size:12px;margin-left:8px;">点击选择 ▶</span>
+                    </div>
+                </div>`;
+            }
+            return `<div class="task-field">
+                <div class="task-field-label">${label}</div>
+                <input class="task-editable" data-field="${field}" value="${displayVal}" onchange="onEquipFieldChange(this)" />
+            </div>`;
+        }
+
+        function renderEquipDetail(d) {
+            const html = [
+                equipField('装备基底ID', 'id', d.id, 'text'),
+                equipField('备注 (Desc)', 'desc', d.desc, 'text'),
+                equipField('词条大类组 (Group)', 'group', d.group, 'select', EQUIP_GROUP_OPTIONS, EQUIP_GROUP_MAP),
+                equipField('名字 (Name)', 'name', d.name, 'text'),
+                equipField('性别 (Gender)', 'gender', d.gender, 'select', EQUIP_GENDER_OPTIONS, EQUIP_GENDER_MAP),
+                equipField('部位 (Pos)', 'pos', d.pos, 'select', EQUIP_POS_OPTIONS, EQUIP_POS_MAP),
+                equipField('类别 (Type)', 'type', d.type, 'select', EQUIP_TYPE_OPTIONS, EQUIP_TYPE_MAP),
+                equipField('Spine', 'spine', d.spine, 'spine'),
+                equipField('装备图标 (Icon)', 'icon', d.icon, 'icon'),
+            ];
+            document.getElementById('equipModalContent').innerHTML = html.join('');
+            checkEquipIdDup();
+        }
+
+        function onEquipFieldChange(el) {
+            const field = el.dataset.field;
+            let val = el.value;
+            if (['id', 'group', 'gender', 'pos', 'type'].includes(field)) {
+                val = val ? parseInt(val) : null;
+            }
+            equipEditData[field] = val;
+            if (field === 'id') checkEquipIdDup();
+        }
+
+        function checkEquipIdDup() {
+            const idInput = document.querySelector('#equipModalContent input[data-field="id"]');
+            if (!idInput) return;
+            const val = parseInt(idInput.value);
+            const count = equipAllList.filter(e => e.id === val).length;
+            if (count > 1) {
+                idInput.classList.add('equip-id-dup');
+            } else {
+                idInput.classList.remove('equip-id-dup');
+            }
+        }
+
+        async function onEquipAssetFocus(type, field) {
+            equipActiveField = { type, field };
+            const tips = document.getElementById('equipModalTips');
+            tips.classList.add('visible');
+            const titleEl = tips.querySelector('.modal-tips-title');
+            titleEl.textContent = type === 'spine' ? 'Spine 预览选择' : '图标预览选择';
+            const searchInput = document.getElementById('equipAssetSearchInput');
+            searchInput.value = '';
+            const picker = document.getElementById('equipAssetPicker');
+            picker.innerHTML = '<div style="color:#6c7086;padding:12px;">加载中...</div>';
+            try {
+                if (type === 'spine') {
+                    if (equipSpineList.length === 0) {
+                        const res = await fetch('/api/spine-list');
+                        if (res.ok) equipSpineList = await res.json();
+                    }
+                    renderEquipAssetPicker(equipSpineList, type);
+                } else {
+                    if (equipTextureList.length === 0) {
+                        const res = await fetch('/api/texture-list');
+                        if (res.ok) equipTextureList = await res.json();
+                    }
+                    renderEquipAssetPicker(equipTextureList, type);
+                }
+            } catch (e) {
+                picker.innerHTML = '<div style="color:#f38ba8;padding:12px;">加载失败</div>';
+            }
+        }
+
+        function getAssetFullPath(item) {
+            if (!item.folder || item.folder === 'Root') return item.name;
+            return item.folder + '/' + item.name;
+        }
+
+        function renderEquipAssetPicker(items, type) {
+            const picker = document.getElementById('equipAssetPicker');
+            const searchVal = (document.getElementById('equipAssetSearchInput').value || '').trim().toLowerCase();
+            const currentVal = equipEditData[equipActiveField.field] || '';
+            const filtered = items.filter(item => !searchVal || item.name.toLowerCase().includes(searchVal));
+            if (filtered.length === 0) {
+                picker.innerHTML = '<div style="color:#6c7086;padding:12px;">未找到资源文件</div>';
+                return;
+            }
+            const groups = {};
+            filtered.forEach(item => {
+                const folder = item.folder || 'Other';
+                if (!groups[folder]) groups[folder] = [];
+                groups[folder].push(item);
+            });
+            const folderNames = Object.keys(groups).sort();
+            picker.innerHTML = folderNames.map(folder => {
+                const folderItems = groups[folder];
+                const gridHtml = folderItems.map(item => {
+                    const fullPath = getAssetFullPath(item);
+                    const matchVal = type === 'icon' ? fullPath : item.name;
+                    const sel = matchVal === currentVal ? ' selected' : '';
+                    const selectVal = type === 'icon' ? fullPath : item.name;
+                    const itemId = `spine-preview-${item.name}`;
+                    let previewHtml;
+                    if (type === 'spine' && item.atlas && item.skel) {
+                        previewHtml = `<canvas id="${itemId}" width="100" height="100" style="width:64px;height:64px;background:#11111b;border-radius:4px;"></canvas>`;
+                    } else {
+                        const img = item.preview ? `<img src="${item.preview}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'">` : '<img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>">';
+                        previewHtml = img;
+                    }
+                    return `<div class="equip-asset-item${sel}" data-asset-name="${item.name}" onclick="selectEquipAsset('${selectVal.replace(/'/g, "\\'")}')" onmouseenter="showAssetHoverPreview(event, '${item.name}')" onmouseleave="hideAssetHoverPreview()">
+                        ${previewHtml}
+                        <span title="${fullPath}">${item.name}</span>
+                    </div>`;
+                }).join('');
+                return `<div class="equip-asset-folder">
+                    <div class="equip-asset-folder-header collapsed" onclick="toggleAssetFolder(this)">
+                        <span class="folder-arrow">▼</span>
+                        <span>${folder} (${folderItems.length})</span>
+                    </div>
+                    <div class="equip-asset-folder-grid hidden">${gridHtml}</div>
+                </div>`;
+            }).join('');
+        }
+
+        const spineCache = {};
+        function renderSpinePreviews(items) {
+            items.forEach(item => {
+                if (!item.atlas || !item.skel) return;
+                const canvasEl = document.getElementById(`spine-preview-${item.name}`);
+                if (!canvasEl || canvasEl.offsetParent === null) return;
+                if (canvasEl.dataset.rendered) return;
+                if (spineCache[item.name]) {
+                    drawSpineFirstFrame(canvasEl, spineCache[item.name]);
+                    canvasEl.dataset.rendered = '1';
+                    return;
+                }
+                loadSpineData(item).then(data => {
+                    if (data) {
+                        spineCache[item.name] = data;
+                        const el = document.getElementById(`spine-preview-${item.name}`);
+                        if (el && el.offsetParent !== null) {
+                            drawSpineFirstFrame(el, data);
+                            el.dataset.rendered = '1';
+                        }
+                    }
+                }).catch(() => {});
+            });
+        }
+
+        async function loadSpineData(item) {
+            try {
+                const [atlasText, skelBytes] = await Promise.all([
+                    fetch(item.atlas).then(r => r.text()),
+                    fetch(item.skel).then(r => r.arrayBuffer())
+                ]);
+                const img = await new Promise((resolve, reject) => {
+                    const i = new Image();
+                    i.crossOrigin = 'anonymous';
+                    i.onload = () => resolve(i);
+                    i.onerror = reject;
+                    i.src = item.image;
+                });
+                return { atlasText, skelBytes, img, name: item.name };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function drawSpineFirstFrame(canvasEl, data) {
+            try {
+                const ctx = canvasEl.getContext('2d');
+                const w = canvasEl.width;
+                const h = canvasEl.height;
+                ctx.clearRect(0, 0, w, h);
+                const spineCanvas = new spine.canvas.SkeletonRenderer(ctx);
+                spineCanvas.debugRendering = false;
+                const imgTexture = new spine.canvas.CanvasTexture(data.img);
+                const atlas = new spine.TextureAtlas(data.atlasText, function() { return imgTexture; });
+                const atlasLoader = new spine.AtlasAttachmentLoader(atlas);
+                const skelBinary = new spine.SkeletonBinary(atlasLoader);
+                skelBinary.scale = 0.15;
+                const skelData = skelBinary.readSkeletonData(new Uint8Array(data.skelBytes));
+                const skeleton = new spine.Skeleton(skelData);
+                skeleton.setToSetupPose();
+                skeleton.updateWorldTransform();
+                const bounds = { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity };
+                const slots = skeleton.slots;
+                for (let i = 0; i < slots.length; i++) {
+                    const attachment = slots[i].getAttachment();
+                    if (attachment && attachment.computeWorldVertices) {
+                        const verts = new Float32Array(1000);
+                        let numVerts = 0;
+                        if (attachment instanceof spine.RegionAttachment) {
+                            attachment.computeWorldVertices(slots[i].bone, verts, 0, 2);
+                            numVerts = 4;
+                        } else if (attachment instanceof spine.MeshAttachment) {
+                            attachment.computeWorldVertices(slots[i], 0, attachment.worldVerticesLength, verts, 0, 2);
+                            numVerts = attachment.worldVerticesLength / 2;
+                        }
+                        for (let j = 0; j < numVerts; j++) {
+                            const vx = verts[j * 2], vy = verts[j * 2 + 1];
+                            if (vx < bounds.x) bounds.x = vx;
+                            if (vx > bounds.x2) bounds.x2 = vx;
+                            if (vy < bounds.y) bounds.y = vy;
+                            if (vy > bounds.y2) bounds.y2 = vy;
+                        }
+                    }
+                }
+                if (bounds.x === Infinity) {
+                    drawFallbackImage(ctx, data.img, w, h);
+                    return;
+                }
+                const bw = bounds.x2 - bounds.x;
+                const bh = bounds.y2 - bounds.y;
+                const scale = Math.min(w / bw, h / bh) * 0.85;
+                const cx = (bounds.x + bounds.x2) / 2;
+                const cy = (bounds.y + bounds.y2) / 2;
+                ctx.save();
+                ctx.translate(w / 2, h / 2);
+                ctx.scale(scale, -scale);
+                ctx.translate(-cx, -cy);
+                spineCanvas.draw(skeleton);
+                ctx.restore();
+                const imageData = ctx.getImageData(0, 0, w, h);
+                let hasContent = false;
+                for (let i = 3; i < imageData.data.length; i += 4) {
+                    if (imageData.data[i] > 0) { hasContent = true; break; }
+                }
+                if (!hasContent) {
+                    ctx.clearRect(0, 0, w, h);
+                    drawFallbackImage(ctx, data.img, w, h);
+                }
+            } catch (e) {
+                const ctx = canvasEl.getContext('2d');
+                ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+                drawFallbackImage(ctx, data.img, canvasEl.width, canvasEl.height);
+            }
+        }
+
+        function drawFallbackImage(ctx, img, w, h) {
+            const scale = Math.min(w / img.width, h / img.height);
+            const dw = img.width * scale;
+            const dh = img.height * scale;
+            ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        }
+
+        function showAssetHoverPreview(event, name) {
+            const panel = document.getElementById('assetHoverPreview');
+            const type = equipActiveField ? equipActiveField.type : null;
+            let item = null;
+            if (type === 'spine') {
+                item = equipSpineList.find(i => i.name === name);
+            } else {
+                item = equipTextureList.find(i => i.name === name);
+            }
+            if (!item) return;
+            const modalWindow = document.querySelector('#equipModal .modal-window');
+            const modalRect = modalWindow.getBoundingClientRect();
+            const itemRect = event.currentTarget.getBoundingClientRect();
+            let left = modalRect.right + 12;
+            let top = itemRect.top;
+            const previewSize = 272;
+            if (left + previewSize > window.innerWidth) {
+                left = modalRect.left - previewSize - 12;
+            }
+            if (top + previewSize > window.innerHeight) {
+                top = window.innerHeight - previewSize - 8;
+            }
+            if (top < 8) top = 8;
+            panel.style.left = left + 'px';
+            panel.style.top = top + 'px';
+            panel.style.display = 'block';
+            if (type === 'spine' && item.atlas && item.skel && spineCache[name]) {
+                panel.innerHTML = '<canvas width="256" height="256"></canvas>';
+                const canvas = panel.querySelector('canvas');
+                drawSpineFirstFrame(canvas, spineCache[name]);
+            } else if (type === 'spine' && item.atlas && item.skel) {
+                if (item.image) {
+                    panel.innerHTML = `<img src="${item.image}" />`;
+                }
+                loadSpineData(item).then(data => {
+                    if (data) {
+                        spineCache[name] = data;
+                        if (panel.style.display === 'block') {
+                            panel.innerHTML = '<canvas width="256" height="256"></canvas>';
+                            const canvas = panel.querySelector('canvas');
+                            drawSpineFirstFrame(canvas, data);
+                        }
+                    }
+                }).catch(() => {});
+            } else if (item.preview) {
+                panel.innerHTML = `<img src="${item.preview}" />`;
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        function hideAssetHoverPreview() {
+            document.getElementById('assetHoverPreview').style.display = 'none';
+        }
+
+        function toggleAssetFolder(header) {
+            header.classList.toggle('collapsed');
+            const grid = header.nextElementSibling;
+            grid.classList.toggle('hidden');
+            if (!grid.classList.contains('hidden') && equipActiveField && equipActiveField.type === 'spine') {
+                requestAnimationFrame(() => renderSpinePreviews(equipSpineList));
+            }
+        }
+
+        function filterEquipAssetPicker() {
+            if (!equipActiveField) return;
+            const type = equipActiveField.type;
+            const items = type === 'spine' ? equipSpineList : equipTextureList;
+            renderEquipAssetPicker(items, type);
+        }
+
+        function selectEquipAsset(name) {
+            if (!equipActiveField) return;
+            const field = equipActiveField.field;
+            equipEditData[field] = name;
+            const input = document.querySelector(`#equipModalContent input[data-field="${field}"]`);
+            if (input) input.value = name;
+            renderEquipDetail(equipEditData);
+            onEquipAssetFocus(equipActiveField.type, field);
+        }
+
+        function addNewEquip() {
+            const newId = equipAllList.length > 0 ? Math.max(...equipAllList.map(e => e.id)) + 1 : 1;
+            const newEquip = { id: newId, name: '', desc: '', group: null, gender: null, pos: null, type: null, spine: null, icon: null };
+            equipAllList.push({ id: newId, name: '' });
+            pendingChanges[`EquipBase_${newId}`] = { table: 'EquipBase', originalId: newId, _new: true, file: 'EquipBase.xlsx', taskId: newId, changes: { ...newEquip } };
+            equipCurrentId = newId;
+            equipEditData = { ...newEquip };
+            renderEquipList();
+            renderEquipDetail(newEquip);
+        }
+
+        async function saveEquipChanges() {
+            if (!equipEditData || !equipEditData.id) { setStatus('没有可保存的数据', 'error'); return; }
+            const key = `EquipBase_${equipCurrentId}`;
+            if (pendingChanges[key] && pendingChanges[key]._new) {
+                pendingChanges[key].changes = { ...equipEditData };
+            } else {
+                pendingChanges[key] = { table: 'EquipBase', originalId: equipCurrentId, file: 'EquipBase.xlsx', taskId: equipCurrentId, changes: { ...equipEditData } };
+            }
+            const cached = equipAllList.find(e => e.id === equipCurrentId);
+            if (cached) {
+                cached.name = equipEditData.name || cached.name;
+            }
+            renderEquipList();
+            showToast('保存成功');
+        }
+
         function openOverview(table) {
             if (table === 'Task') {
                 taskOpenSource = null;
                 openTaskModal(null);
+            } else if (table === 'EquipBase') {
+                openEquipModal(null);
             } else {
                 setStatus(`[接口预留] ${table} 一览`);
             }
@@ -2114,6 +2817,15 @@
                     if (data.path) {
                         document.getElementById('folderInput').value = data.path;
                         loadFolder();
+                    }
+                }
+            } catch (e) {}
+            try {
+                const res = await fetch('/api/current-asset-folder');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.path) {
+                        document.getElementById('assetFolderInput').value = data.path;
                     }
                 }
             } catch (e) {}

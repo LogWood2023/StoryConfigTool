@@ -15,7 +15,9 @@ import json
 app = FastAPI()
 
 DATA_DIR = None
+ASSET_DIR = None
 _CONFIG_FILE = os.path.join(os.path.dirname(__file__), ".last_folder")
+_ASSET_CONFIG_FILE = os.path.join(os.path.dirname(__file__), ".last_asset_folder")
 
 def _load_last_folder():
     global DATA_DIR
@@ -28,7 +30,19 @@ def _load_last_folder():
         except Exception:
             pass
 
+def _load_last_asset_folder():
+    global ASSET_DIR
+    if os.path.exists(_ASSET_CONFIG_FILE):
+        try:
+            with open(_ASSET_CONFIG_FILE, "r", encoding="utf-8") as f:
+                path = f.read().strip()
+            if path and os.path.isdir(path):
+                ASSET_DIR = path
+        except Exception:
+            pass
+
 _load_last_folder()
+_load_last_asset_folder()
 
 
 class FolderRequest(BaseModel):
@@ -850,6 +864,26 @@ async def set_folder(req: FolderRequest):
     return {"status": "ok", "path": DATA_DIR}
 
 
+@app.get("/api/current-asset-folder")
+async def get_current_asset_folder():
+    return {"path": ASSET_DIR}
+
+
+@app.post("/api/set-asset-folder")
+async def set_asset_folder(req: FolderRequest):
+    global ASSET_DIR
+    folder = req.path.strip()
+    if not os.path.isdir(folder):
+        raise HTTPException(status_code=400, detail=f"Folder not found: {folder}")
+    ASSET_DIR = folder
+    try:
+        with open(_ASSET_CONFIG_FILE, "w", encoding="utf-8") as f:
+            f.write(folder)
+    except Exception:
+        pass
+    return {"status": "ok", "path": ASSET_DIR}
+
+
 @app.get("/api/story-groups")
 async def get_story_groups():
     if DATA_DIR is None:
@@ -976,6 +1010,7 @@ FIELD_TO_COL = {
     "countdown": "Countdown", "isRepeat": "IsRepeat", "isHide": "IsHide",
     "allowDirectReturn": "AllowDirectReturn", "addFavor": "AddFavor", "nextTask": "NextTask",
     "groupWeight": "Group",
+    "desc": "Desc", "gender": "Gender", "pos": "Pos", "spine": "Spine", "icon": "Icon",
 }
 
 
@@ -1034,17 +1069,17 @@ async def export_changes(req: ExportRequest):
         shutil.copy2(src_path, dst_path)
 
         wb = load_workbook(dst_path)
-        ws = wb.active
+        if file_name == "EquipBase.xlsx":
+            ws = wb["装备基底"] if "装备基底" in wb.sheetnames else wb.active
+        else:
+            ws = wb.active
 
         header_row_idx = None
         col_map = {}
         for row_idx in range(1, min(11, ws.max_row + 1)):
             for col_idx in range(1, ws.max_column + 1):
                 cell_val = ws.cell(row=row_idx, column=col_idx).value
-                if cell_val and str(cell_val).strip() == "Id":
-                    header_row_idx = row_idx
-                    break
-                if cell_val and str(cell_val).strip() == "EventId":
+                if cell_val and str(cell_val).strip() in ("Id", "ID", "EventId"):
                     header_row_idx = row_idx
                     break
             if header_row_idx:
@@ -1060,7 +1095,7 @@ async def export_changes(req: ExportRequest):
 
         data_start = header_row_idx + 1
         for row_idx in range(header_row_idx + 1, min(header_row_idx + 5, ws.max_row + 1)):
-            id_col_idx = col_map.get("Id") or col_map.get("EventId")
+            id_col_idx = col_map.get("Id") or col_map.get("ID") or col_map.get("EventId")
             if id_col_idx:
                 cell_val = str(ws.cell(row=row_idx, column=id_col_idx).value or "").strip().lower()
                 if cell_val in ("int", "string", "int[]", "int[][]", "string[]", "string[][]", "float", "key", "index", "key,set", "set", ""):
@@ -1068,7 +1103,7 @@ async def export_changes(req: ExportRequest):
                 else:
                     break
 
-        id_col_idx = col_map.get("Id") or col_map.get("EventId")
+        id_col_idx = col_map.get("Id") or col_map.get("ID") or col_map.get("EventId")
         for item in items:
             task_id = item.get("taskId")
             is_delete = item.get("_delete", False)
@@ -1095,8 +1130,10 @@ async def export_changes(req: ExportRequest):
                             ws.cell(row=new_row, column=col_map[col_map_name]).value = None if value == '' else value
                     else:
                         col_name = FIELD_TO_COL.get(field)
-                        if col_name and col_name in col_map:
-                            ws.cell(row=new_row, column=col_map[col_name]).value = value
+                        if col_name:
+                            actual_col = col_map.get(col_name) or col_map.get(col_name.upper())
+                            if actual_col:
+                                ws.cell(row=new_row, column=actual_col).value = value
                 continue
 
             target_row = None
@@ -1188,7 +1225,7 @@ async def export_changes(req: ExportRequest):
                             else:
                                 gparts.append(str(value))
                             ws.cell(row=target_row, column=col_idx).value = ",".join(gparts)
-                elif field == "group":
+                elif field == "group" and item.get("table") != "EquipBase":
                     col_idx = col_map.get("Group")
                     if col_idx:
                         old_val = ws.cell(row=target_row, column=col_idx).value
@@ -1200,14 +1237,173 @@ async def export_changes(req: ExportRequest):
                             ws.cell(row=target_row, column=col_idx).value = str(value)
                 else:
                     col_name = FIELD_TO_COL.get(field)
-                    if col_name and col_name in col_map:
-                        col_idx = col_map[col_name]
-                        ws.cell(row=target_row, column=col_idx).value = value
+                    if col_name:
+                        col_idx = col_map.get(col_name) or col_map.get(col_name.upper())
+                        if col_idx:
+                            ws.cell(row=target_row, column=col_idx).value = value
 
         wb.save(dst_path)
         exported_files.append(file_name)
 
     return {"message": f"已导出 {len(exported_files)} 个文件到 app/导出文件/{timestamp}", "files": exported_files}
+
+
+EQUIP_FIELDS = ["ID", "Name", "Desc", "Group", "Gender", "Pos", "Type", "Spine", "Icon"]
+
+
+def read_equip_all():
+    if DATA_DIR is None:
+        return []
+    file_path = os.path.join(DATA_DIR, "EquipBase.xlsx")
+    if not os.path.exists(file_path):
+        return []
+    try:
+        df = pd.read_excel(file_path, sheet_name="装备基底", header=None)
+    except Exception:
+        df = pd.read_excel(file_path, sheet_name=0, header=None)
+    _, col_map, data_start = find_header_and_data_start(df, "ID")
+    if col_map is None:
+        return []
+    id_col = col_map.get("id")
+    if id_col is None:
+        return []
+    field_cols = {}
+    for f in EQUIP_FIELDS:
+        fc = col_map.get(f.lower())
+        if fc is not None:
+            field_cols[f] = fc
+    result = []
+    for i in range(data_start, len(df)):
+        raw_id = df.iloc[i, id_col]
+        if pd.isna(raw_id):
+            continue
+        try:
+            rid = int(float(str(raw_id)))
+        except (ValueError, TypeError):
+            continue
+        row = {"id": rid}
+        for f, fc in field_cols.items():
+            if f == "ID":
+                continue
+            val = df.iloc[i, fc]
+            if pd.isna(val):
+                row[f.lower()] = None
+            else:
+                try:
+                    row[f.lower()] = int(float(str(val)))
+                except (ValueError, TypeError):
+                    row[f.lower()] = str(val).strip()
+        result.append(row)
+    return result
+
+
+@app.get("/api/equip-list")
+async def get_equip_list():
+    if DATA_DIR is None:
+        raise HTTPException(status_code=400, detail="No folder configured.")
+    items = read_equip_all()
+    return [{"id": e["id"], "name": e.get("name") or f"装备{e['id']}"} for e in items]
+
+
+@app.get("/api/equip/{equip_id}")
+async def get_equip_detail(equip_id: int):
+    if DATA_DIR is None:
+        raise HTTPException(status_code=400, detail="No folder configured.")
+    items = read_equip_all()
+    for e in items:
+        if e["id"] == equip_id:
+            return e
+    raise HTTPException(status_code=404, detail=f"Equip {equip_id} not found")
+
+
+@app.get("/api/spine-list")
+async def get_spine_list():
+    if ASSET_DIR is None:
+        raise HTTPException(status_code=400, detail="No asset folder configured.")
+    spine_dir = os.path.join(ASSET_DIR, "Assets", "Game", "Bundle", "Spine", "Hero")
+    if not os.path.isdir(spine_dir):
+        return []
+    result = []
+    gameres_spine = os.path.join(ASSET_DIR, "Assets", "Game", "GameRes", "Spine")
+    spine_data_map = {}
+    folder_map = {}
+    if os.path.isdir(gameres_spine):
+        for root, dirs, files in os.walk(gameres_spine):
+            for f in files:
+                if f.lower().endswith(".atlas.txt"):
+                    name_no_ext = f[:-len(".atlas.txt")]
+                    rel_path = os.path.relpath(root, os.path.join(ASSET_DIR, "Assets", "Game", "GameRes")).replace("\\", "/")
+                    atlas_url = f"/api/gameres-file/{rel_path}/{f}"
+                    skel_file = f"{name_no_ext}.skel.bytes"
+                    png_file = f"{name_no_ext}.png"
+                    skel_url = f"/api/gameres-file/{rel_path}/{skel_file}" if skel_file in files else None
+                    png_url = f"/api/gameres-file/{rel_path}/{png_file}" if png_file in files else None
+                    if name_no_ext not in spine_data_map:
+                        spine_data_map[name_no_ext] = {
+                            "atlas": atlas_url,
+                            "skel": skel_url,
+                            "image": png_url,
+                            "preview": png_url
+                        }
+                        parts = rel_path.split("/")
+                        folder_name = parts[1] if len(parts) > 1 else "Other"
+                        folder_map[name_no_ext] = folder_name
+    for name in os.listdir(spine_dir):
+        if name.lower().endswith(".prefab"):
+            prefab_name = name[:-len(".prefab")]
+            data = spine_data_map.get(prefab_name, {})
+            folder = folder_map.get(prefab_name, "Other")
+            result.append({
+                "name": prefab_name,
+                "preview": data.get("preview"),
+                "folder": folder,
+                "atlas": data.get("atlas"),
+                "skel": data.get("skel"),
+                "image": data.get("image")
+            })
+    result.sort(key=lambda x: x["name"])
+    return result
+
+
+@app.get("/api/texture-list")
+async def get_texture_list():
+    if ASSET_DIR is None:
+        raise HTTPException(status_code=400, detail="No asset folder configured.")
+    tex_dir = os.path.join(ASSET_DIR, "Assets", "Game", "Bundle", "UI", "Texture")
+    if not os.path.isdir(tex_dir):
+        return []
+    result = []
+    for root, dirs, files in os.walk(tex_dir):
+        for name in files:
+            if name.lower().endswith((".png", ".jpg", ".jpeg", ".tga")) and not name.endswith(".meta"):
+                rel_path = os.path.relpath(os.path.join(root, name), os.path.join(ASSET_DIR, "Assets", "Game", "Bundle")).replace("\\", "/")
+                folder_rel = os.path.relpath(root, tex_dir).replace("\\", "/")
+                if folder_rel == ".":
+                    folder_rel = "Root"
+                display_name = os.path.splitext(name)[0]
+                result.append({"name": display_name, "file": name, "preview": f"/api/asset-file/{rel_path}", "folder": folder_rel})
+    result.sort(key=lambda x: x["name"])
+    return result
+
+
+@app.get("/api/gameres-file/{path:path}")
+async def get_gameres_file(path: str):
+    if ASSET_DIR is None:
+        raise HTTPException(status_code=400, detail="No asset folder configured.")
+    full_path = os.path.join(ASSET_DIR, "Assets", "Game", "GameRes", path)
+    if not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(full_path)
+
+
+@app.get("/api/asset-file/{path:path}")
+async def get_asset_file(path: str):
+    if ASSET_DIR is None:
+        raise HTTPException(status_code=400, detail="No asset folder configured.")
+    full_path = os.path.join(ASSET_DIR, "Assets", "Game", "Bundle", path)
+    if not os.path.isfile(full_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(full_path)
 
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
