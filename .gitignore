@@ -6,3 +6,4 @@ __pycache__/
 dist/
 build/
 app/导出文件/
+app/.last_folder

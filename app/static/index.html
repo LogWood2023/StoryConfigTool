@@ -397,6 +397,30 @@
             flex-direction: column;
             overflow: hidden;
         }
+        .task-search-input {
+            flex: 1;
+            box-sizing: border-box;
+            padding: 6px 10px;
+            background: #1e1e2e;
+            border: none;
+            color: #cdd6f4;
+            font-size: 13px;
+            outline: none;
+        }
+        .task-search-input::placeholder { color: #6c7086; }
+        .task-search-bar {
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #313244;
+        }
+        .task-search-add {
+            padding: 6px 8px;
+            cursor: pointer;
+            color: #a6e3a1;
+            font-size: 15px;
+            user-select: none;
+        }
+        .task-search-add:hover { color: #f9e2af; }
 
         .modal-left-list {
             flex: 1;
@@ -415,13 +439,66 @@
             color: #a6adc8;
             border-left: 3px solid transparent;
             transition: background 0.15s;
+            display: flex;
+            align-items: center;
+        }
+        .modal-left-item-text {
+            flex: 1;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+        .modal-left-item-del {
+            display: none;
+            font-size: 12px;
+            margin-left: 4px;
+            opacity: 0.6;
+        }
+        .modal-left-item:hover .modal-left-item-del { display: inline; }
+        .modal-left-item-del:hover { opacity: 1; }
 
         .modal-left-item:hover { background: #313244; }
         .modal-left-item.active { background: #313244; border-left-color: #89b4fa; color: #cdd6f4; }
+
+        .task-delete-btn {
+            display: inline-block;
+            cursor: pointer;
+            color: #6c7086;
+            font-size: 12px;
+            margin-right: 4px;
+            flex-shrink: 0;
+            transition: color 0.15s;
+            vertical-align: middle;
+        }
+
+        .task-delete-btn:hover { color: #f38ba8; }
+        .task-field-add {
+            display: block;
+            cursor: pointer;
+            color: #a6adc8;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 4px;
+            padding: 2px 8px;
+            border: 1px dashed #45475a;
+            border-radius: 4px;
+            transition: color 0.15s, border-color 0.15s;
+            width: fit-content;
+        }
+        .task-field-add:hover { color: #89b4fa; border-color: #89b4fa; }
+        .task-entry-delete {
+            cursor: pointer;
+            color: #6c7086;
+            font-size: 12px;
+            margin-left: 6px;
+            transition: color 0.15s;
+        }
+        .task-entry-delete:hover { color: #f38ba8; }
+        .trigger-type-select {
+            margin-right: 6px;
+            font-size: 12px;
+            padding: 1px 4px;
+        }
 
         .modal-right {
             flex: 1;
@@ -443,8 +520,8 @@
         .modal-content { flex: 1; min-width: 0; }
 
         .modal-tips {
-            width: 220px;
-            min-width: 220px;
+            width: 260px;
+            min-width: 260px;
             background: #181825;
             border: 1px solid #313244;
             border-radius: 8px;
@@ -465,10 +542,23 @@
             margin-bottom: 8px;
         }
 
-        .modal-tips-content {
-            font-size: 12px;
-            color: #a6adc8;
-            line-height: 1.6;
+        .modal-tips-textarea {
+            width: 100%;
+            min-height: 120px;
+            background: #1e1e2e;
+            border: 1px solid #45475a;
+            border-radius: 4px;
+            color: #cdd6f4;
+            font-size: 13px;
+            padding: 8px;
+            resize: vertical;
+            line-height: 1.5;
+            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+        }
+
+        .modal-tips-textarea:focus {
+            outline: none;
+            border-color: #89b4fa;
         }
 
         .task-field {
@@ -501,6 +591,19 @@
         }
 
         .task-field-value .ref-link:hover { color: #b4d0fb; }
+        .ref-id-input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px dashed #89b4fa;
+            color: #89b4fa;
+            font-size: 13px;
+            padding: 0 2px;
+            text-align: center;
+            outline: none;
+        }
+        .ref-id-input:focus { border-bottom-color: #cdd6f4; }
+        .ref-name-error { color: #f38ba8; }
+        .ref-name-ok { color: #89b4fa; cursor: pointer; text-decoration: underline; text-decoration-style: dotted; }
 
         .task-field-value .error-text {
             color: #f38ba8;
@@ -638,6 +741,10 @@
             </div>
             <div class="modal-body">
                 <div class="modal-left">
+                    <div class="task-search-bar">
+                        <span class="task-search-add" onclick="addNewTask()">＋</span>
+                        <input class="task-search-input" id="taskSearchInput" type="text" placeholder="搜索任务..." oninput="filterTaskList()" />
+                    </div>
                     <div class="modal-left-list" id="taskModalList"></div>
                 </div>
                 <div class="modal-right">
@@ -645,8 +752,8 @@
                         <div class="modal-content" id="taskModalContent"></div>
                     </div>
                     <div class="modal-tips" id="taskModalTips">
-                        <div class="modal-tips-title">提示</div>
-                        <div class="modal-tips-content" id="taskModalTipsContent"></div>
+                        <div class="modal-tips-title" id="taskModalTipsTitle">输入预览</div>
+                        <textarea class="modal-tips-textarea" id="taskModalTipsTextarea" onblur="onMirrorBlur(event)"></textarea>
                     </div>
                 </div>
             </div>
@@ -715,6 +822,7 @@
                 const data = await groupRes.json();
                 allGroups = data.groups;
                 nodes = {};
+                fieldDefaults = null;
                 document.getElementById('contentArea').innerHTML = `
                     <div class="empty-state" id="emptyHint">
                         <div>勾选左侧剧情组以添加节点</div>
@@ -1006,7 +1114,7 @@
             modal.classList.add('open');
             title.textContent = '任务一览';
             content.innerHTML = '<div style="color:#f9e2af;padding:20px;">加载中...</div>';
-            hideTaskTips();
+            document.getElementById('taskModalTips').classList.remove('visible');
             taskEditData = { taskId, changes: {} };
 
             try {
@@ -1027,11 +1135,52 @@
         }
 
         function renderTaskList(listEl, activeId) {
-            listEl.innerHTML = taskListCache.map(t =>
-                `<div class="modal-left-item${t.id === activeId ? ' active' : ''}" onclick="selectTask(${t.id})">[${t.id}]${escapeHtml(t.name)}</div>`
+            const keyword = (document.getElementById('taskSearchInput')?.value || '').trim().toLowerCase();
+            const filtered = keyword
+                ? taskListCache.filter(t => `[${t.id}]${t.name}`.toLowerCase().includes(keyword))
+                : taskListCache;
+            listEl.innerHTML = filtered.map(t =>
+                `<div class="modal-left-item${t.id === activeId ? ' active' : ''}" onclick="selectTask(${t.id})"><span class="modal-left-item-text">[${t.id}]${escapeHtml(t.name)}</span><span class="modal-left-item-del" onclick="event.stopPropagation();deleteTask(${t.id})">🗑</span></div>`
             ).join('');
             const activeItem = listEl.querySelector('.modal-left-item.active');
             if (activeItem) activeItem.scrollIntoView({ block: 'nearest' });
+        }
+
+        function filterTaskList() {
+            const listEl = document.getElementById('taskModalList');
+            const activeId = taskEditData?.taskId;
+            renderTaskList(listEl, activeId);
+        }
+
+        function addNewTask() {
+            const maxId = taskListCache.reduce((max, t) => Math.max(max, t.id), 0);
+            const newId = maxId + 1;
+            const newTask = { id: newId, name: '' };
+            taskListCache.push(newTask);
+            pendingChanges[`Task_${newId}`] = { file: 'Task.xlsx', taskId: newId, _new: true, changes: {} };
+            const listEl = document.getElementById('taskModalList');
+            renderTaskList(listEl, newId);
+            selectTask(newId);
+        }
+
+        function deleteTask(taskId) {
+            if (!confirm(`是否要彻底删除任务 [${taskId}]？`)) return;
+            const idx = taskListCache.findIndex(t => t.id === taskId);
+            const origId = idx !== -1 && taskListCache[idx]._originalId ? taskListCache[idx]._originalId : taskId;
+            if (idx !== -1) taskListCache.splice(idx, 1);
+            const key = `Task_${origId}`;
+            if (pendingChanges[key] && pendingChanges[key]._new) {
+                delete pendingChanges[key];
+            } else {
+                pendingChanges[key] = { file: 'Task.xlsx', taskId: origId, _delete: true };
+            }
+            const listEl = document.getElementById('taskModalList');
+            if (taskEditData?.taskId === taskId) {
+                const content = document.getElementById('taskModalContent');
+                content.innerHTML = '<div style="color:#6c7086;padding:20px;">已删除</div>';
+                taskEditData = { taskId: null, changes: {} };
+            }
+            renderTaskList(listEl, taskEditData?.taskId);
         }
 
         async function selectTask(taskId) {
@@ -1041,21 +1190,70 @@
             const items = listEl.querySelectorAll('.modal-left-item');
             const idx = taskListCache.findIndex(t => t.id === taskId);
             if (idx >= 0 && items[idx]) items[idx].classList.add('active');
-            hideTaskTips();
+            document.getElementById('taskModalTips').classList.remove('visible');
             await loadTaskDetail(taskId);
+        }
+
+        function getOriginalTaskId(taskId) {
+            const cached = taskListCache.find(t => t.id === taskId);
+            return cached && cached._originalId ? cached._originalId : taskId;
         }
 
         async function loadTaskDetail(taskId) {
             const content = document.getElementById('taskModalContent');
             content.innerHTML = '<div style="color:#f9e2af;padding:20px;">加载中...</div>';
+            const origId = getOriginalTaskId(taskId);
+            if (pendingChanges[`Task_${origId}`] && pendingChanges[`Task_${origId}`]._new) {
+                const d = {
+                    id: taskId, name: '', dsc: '', taskType: 0, type: 0, subType: 0,
+                    difficulty: 0, countdown: 0, isRepeat: 0, isHide: 0,
+                    allowDirectReturn: 0, addFavor: 0,
+                    nextTask: null, realmLevel: null, group: null,
+                    acceptCondition: [], completeCondition: [],
+                    acceptTrigger: [], deleteTrigger: [], failTrigger: [],
+                    removeItem: [], reward: [], selfAddCondition: [],
+                    inProgressTrack: null, completeTrack: null
+                };
+                taskEditData.original = d;
+                content.innerHTML = renderTaskDetail(d);
+                return;
+            }
             try {
-                const res = await fetch(`/api/task/${taskId}`);
+                const res = await fetch(`/api/task/${origId}`);
                 if (!res.ok) {
                     const err = await res.json();
                     content.innerHTML = `<div style="color:#f38ba8;padding:20px;">错误: ${err.detail || '未知错误'}</div>`;
                     return;
                 }
                 const d = await res.json();
+                const key = `Task_${origId}`;
+                if (pendingChanges[key] && pendingChanges[key].changes) {
+                    const c = pendingChanges[key].changes;
+                    if (c.id !== undefined) d.id = parseInt(c.id) || d.id;
+                    if (c.name !== undefined) d.name = c.name;
+                    if (c.dsc !== undefined) d.dsc = c.dsc;
+                    if (c.type !== undefined) { d.type = parseInt(c.type); d.taskType = parseInt(c.type); }
+                    if (c.subType !== undefined) d.subType = parseInt(c.subType);
+                    if (c.difficulty !== undefined) d.difficulty = parseInt(c.difficulty);
+                    if (c.countdown !== undefined) d.countdown = parseInt(c.countdown);
+                    if (c.isRepeat !== undefined) d.isRepeat = parseInt(c.isRepeat);
+                    if (c.isHide !== undefined) d.isHide = parseInt(c.isHide);
+                    if (c.allowDirectReturn !== undefined) d.allowDirectReturn = parseInt(c.allowDirectReturn);
+                    if (c.addFavor !== undefined) d.addFavor = parseInt(c.addFavor);
+                    if (c.nextTask !== undefined) d.nextTask = { id: parseInt(c.nextTask), name: '' };
+                    if (c.realmLevel !== undefined && d.realmLevel) d.realmLevel.id = parseInt(c.realmLevel);
+                    if (c.group !== undefined && d.group) d.group.id = parseInt(c.group);
+                    if (c.acceptCondition === '') d.acceptCondition = [];
+                    if (c.completeCondition === '') d.completeCondition = [];
+                    if (c.acceptTrigger === '') d.acceptTrigger = [];
+                    if (c.deleteTrigger === '') d.deleteTrigger = [];
+                    if (c.failTrigger === '') d.failTrigger = [];
+                    if (c.removeItem === '') d.removeItem = [];
+                    if (c.reward === '') d.reward = [];
+                    if (c.selfAddCondition === '') d.selfAddCondition = [];
+                    if (c.inProgressTrack === '') d.inProgressTrack = null;
+                    if (c.completeTrack === '') d.completeTrack = null;
+                }
                 taskEditData.original = d;
                 content.innerHTML = renderTaskDetail(d);
             } catch (e) {
@@ -1065,18 +1263,63 @@
 
         function closeTaskModal() {
             document.getElementById('taskModal').classList.remove('open');
-            hideTaskTips();
-        }
-
-        function showTaskTips(text) {
-            const tips = document.getElementById('taskModalTips');
-            const tipsContent = document.getElementById('taskModalTipsContent');
-            tips.classList.add('visible');
-            tipsContent.innerHTML = text;
-        }
-
-        function hideTaskTips() {
             document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        let mirrorTarget = null;
+
+        function showMirrorPanel(el) {
+            const tips = document.getElementById('taskModalTips');
+            const textarea = document.getElementById('taskModalTipsTextarea');
+            const title = document.getElementById('taskModalTipsTitle');
+            mirrorTarget = el;
+            const fieldName = el.dataset.field || '输入';
+            title.textContent = fieldName;
+            if (el.tagName === 'SELECT') {
+                const selectedText = el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : '';
+                textarea.value = selectedText;
+                textarea.readOnly = true;
+            } else {
+                textarea.value = el.value || '';
+                textarea.readOnly = false;
+            }
+            tips.classList.add('visible');
+            textarea.oninput = function() {
+                if (mirrorTarget && mirrorTarget.tagName !== 'SELECT') {
+                    mirrorTarget.value = textarea.value;
+                    taskFieldChanged(mirrorTarget);
+                }
+            };
+            el.addEventListener('input', syncToMirror);
+        }
+
+        function syncToMirror(e) {
+            const textarea = document.getElementById('taskModalTipsTextarea');
+            if (mirrorTarget === e.target) {
+                textarea.value = e.target.value;
+            }
+        }
+
+        function hideMirrorPanel(e) {
+            const tips = document.getElementById('taskModalTips');
+            const textarea = document.getElementById('taskModalTipsTextarea');
+            if (e && e.relatedTarget === textarea) return;
+            if (mirrorTarget) {
+                mirrorTarget.removeEventListener('input', syncToMirror);
+            }
+            mirrorTarget = null;
+            tips.classList.remove('visible');
+            textarea.oninput = null;
+        }
+
+        function onMirrorBlur(e) {
+            const tips = document.getElementById('taskModalTips');
+            if (e && e.relatedTarget && (e.relatedTarget.classList.contains('task-editable') || e.relatedTarget.classList.contains('task-select'))) return;
+            if (mirrorTarget) {
+                mirrorTarget.removeEventListener('input', syncToMirror);
+            }
+            mirrorTarget = null;
+            tips.classList.remove('visible');
         }
 
         function saveTaskChanges() {
@@ -1085,12 +1328,21 @@
                 setStatus('没有需要保存的修改');
                 return;
             }
-            const key = `Task_${taskId}`;
+            if (taskEditData.changes.id !== undefined) {
+                const newId = parseInt(taskEditData.changes.id);
+                const duplicate = taskListCache.find(t => t.id === newId && (t._originalId || t.id) !== (getOriginalTaskId(taskId)));
+                if (duplicate) {
+                    alert('不能有重复的id');
+                    return;
+                }
+            }
+            const origId = getOriginalTaskId(taskId);
+            const key = `Task_${origId}`;
             const prevState = pendingChanges[key] ? JSON.parse(JSON.stringify(pendingChanges[key])) : null;
             undoStack.push({ key, prev: prevState });
             if (undoStack.length > MAX_UNDO) undoStack.shift();
             if (!pendingChanges[key]) {
-                pendingChanges[key] = { file: 'Task.xlsx', taskId, original: taskEditData.original, changes: {} };
+                pendingChanges[key] = { file: 'Task.xlsx', taskId: origId, original: taskEditData.original, changes: {} };
             }
             Object.assign(pendingChanges[key].changes, taskEditData.changes);
             if (taskOpenSource && taskEditData.original) {
@@ -1099,8 +1351,20 @@
                 taskOpenSource.textContent = `[${newId}]${newName}`;
                 taskOpenSource.setAttribute('onclick', `onRefClick('Task', ${newId}, this)`);
             }
+            const cached = taskListCache.find(t => (t._originalId || t.id) === origId);
+            if (cached) {
+                const allChanges = pendingChanges[key].changes;
+                if (allChanges.id !== undefined) {
+                    if (!cached._originalId) cached._originalId = cached.id;
+                    cached.id = parseInt(allChanges.id);
+                    taskEditData.taskId = cached.id;
+                }
+                if (allChanges.name !== undefined) cached.name = allChanges.name;
+            }
             taskEditData.changes = {};
-            setStatus(`任务 ${taskId} 的修改已保存（共 ${Object.keys(pendingChanges).length} 个待导出项）`);
+            const listEl = document.getElementById('taskModalList');
+            if (listEl) renderTaskList(listEl, taskEditData.taskId);
+            setStatus(`任务 ${origId} 的修改已保存（共 ${Object.keys(pendingChanges).length} 个待导出项）`);
         }
 
         async function exportAll() {
@@ -1137,22 +1401,22 @@
             let html = '';
 
             html += taskField('ID', d.id, d.isDuplicate ? 'duplicate-error' : '', () =>
-                `<input class="task-editable" value="${d.id}" data-field="id" onchange="taskFieldChanged(this)" />`
+                `<input class="task-editable" value="${d.id}" data-field="id" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" />`
             );
 
             html += taskField('名字', null, '', () =>
-                `<input class="task-editable" value="${escapeHtml(d.name || '')}" data-field="name" onchange="taskFieldChanged(this)" />`
+                `<input class="task-editable" value="${escapeHtml(d.name || '')}" data-field="name" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" />`
             );
 
             html += taskField('任务描述文本', null, '', () =>
-                `<input class="task-editable dsc-text" value="${escapeHtml(d.dsc || '')}" data-field="dsc" onfocus="selectDsc(this)" onblur="hideTaskTips()" onchange="taskFieldChanged(this)" />`
+                `<input class="task-editable dsc-text" value="${escapeHtml(d.dsc || '')}" data-field="dsc" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" />`
             );
 
             html += taskField('任务类型', null, '', () => {
                 let opts = Object.entries(TASK_TYPES).map(([k, v]) =>
                     `<option value="${k}" ${parseInt(k) === d.taskType ? 'selected' : ''}>${v}</option>`
                 ).join('');
-                return `<select class="task-select" data-field="type" onchange="taskFieldChanged(this)">${opts}</select>`;
+                return `<select class="task-select" data-field="type" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="onTypeChanged(this)">${opts}</select>`;
             });
 
             html += taskField('任务子类型', null, '', () => {
@@ -1160,12 +1424,12 @@
                 let opts = Object.entries(TASK_SUBTYPES).map(([k, v]) =>
                     `<option value="${k}" ${parseInt(k) === d.subType ? 'selected' : ''}>${v}</option>`
                 ).join('');
-                return `<select class="task-select" data-field="subType" onchange="taskFieldChanged(this)">${opts}</select>`;
+                return `<select class="task-select" data-field="subType" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">${opts}</select>`;
             });
 
             html += taskField('任务分组ID和权重', null, '', () => {
                 if (!isGuildOrTown) return '<span style="color:#6c7086;">/</span>';
-                let groupSelect = '<select class="task-select" data-field="group" onchange="taskFieldChanged(this)">';
+                let groupSelect = '<select class="task-select" data-field="group" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">';
                 groupSelect += `<option value="">无</option>`;
                 taskGroupOptions.forEach(opt => {
                     const sel = d.group && d.group.id === opt.id ? 'selected' : '';
@@ -1173,12 +1437,12 @@
                 });
                 groupSelect += '</select>';
                 const weightVal = d.group ? (d.group.weight || 0) : '';
-                return `<div>任务分组：${groupSelect}</div><div style="margin-top:4px;">权重：<input class="task-editable" type="number" value="${weightVal}" data-field="groupWeight" onchange="taskFieldChanged(this)" style="width:60px;" /></div>`;
+                return `<div>任务分组：${groupSelect}</div><div style="margin-top:4px;">权重：<input class="task-editable" type="number" value="${weightVal}" data-field="groupWeight" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" style="width:60px;" /></div>`;
             });
 
             html += taskField('境界等级', null, '', () => {
                 if (!isGuildOrTown) return '<span style="color:#6c7086;">/</span>';
-                let rlSelect = '<select class="task-select" data-field="realmLevel" onchange="taskFieldChanged(this)">';
+                let rlSelect = '<select class="task-select" data-field="realmLevel" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">';
                 rlSelect += `<option value="">无</option>`;
                 realmLevelOptions.forEach(opt => {
                     const sel = d.realmLevel && d.realmLevel.level === opt.id ? 'selected' : '';
@@ -1192,93 +1456,124 @@
                 let opts = Object.entries(DIFFICULTY_MAP).map(([k, v]) =>
                     `<option value="${k}" ${parseInt(k) === d.difficulty ? 'selected' : ''}>${v}</option>`
                 ).join('');
-                return `<select class="task-select" data-field="difficulty" onchange="taskFieldChanged(this)">${opts}</select>`;
+                return `<select class="task-select" data-field="difficulty" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">${opts}</select>`;
             });
 
             html += taskField('倒计时/天', null, '', () =>
-                `<input class="task-editable" type="number" value="${d.countdown !== null ? d.countdown : ''}" data-field="countdown" onchange="taskFieldChanged(this)" />`
+                `<input class="task-editable" type="number" value="${d.countdown !== null ? d.countdown : ''}" data-field="countdown" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" />`
             );
 
-            html += taskField('任务可接条件', null, '', () => renderConditionList(d.acceptCondition, 'acceptCond'));
+            html += taskField('任务可接条件', null, '', () => renderConditionList(d.acceptCondition, 'acceptCond', 'acceptCondition'), true, 'acceptCondition', 'acceptCondition', d.acceptCondition);
 
             html += taskField('是否可重复领取', null, '', () => {
-                return `<select class="task-select" data-field="isRepeat" onchange="taskFieldChanged(this)">
+                return `<select class="task-select" data-field="isRepeat" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">
                     <option value="0" ${d.isRepeat !== 1 ? 'selected' : ''}>不可重复</option>
                     <option value="1" ${d.isRepeat === 1 ? 'selected' : ''}>可重复</option>
                 </select>`;
             });
 
             html += taskField('是否隐藏', null, '', () => {
-                return `<select class="task-select" data-field="isHide" onchange="taskFieldChanged(this)">
+                return `<select class="task-select" data-field="isHide" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">
                     <option value="0" ${d.isHide !== 1 ? 'selected' : ''}>不隐藏</option>
                     <option value="1" ${d.isHide === 1 ? 'selected' : ''}>隐藏</option>
                 </select>`;
             });
 
-            html += taskField('任务领取后的触发', null, '', () => renderTriggerField(d.acceptTrigger));
+            html += taskField('任务领取后的触发', null, '', () => renderTriggerField(d.acceptTrigger, 'acceptTrigger'), true, 'acceptTrigger', 'acceptTrigger', d.acceptTrigger, true);
             html += taskField('是否可以原地交还', null, '', () => {
-                return `<select class="task-select" data-field="allowDirectReturn" onchange="taskFieldChanged(this)">
+                return `<select class="task-select" data-field="allowDirectReturn" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)">
                     <option value="0" ${d.allowDirectReturn !== 1 ? 'selected' : ''}>不可以</option>
                     <option value="1" ${d.allowDirectReturn === 1 ? 'selected' : ''}>可以</option>
                 </select>`;
             });
-            html += taskField('任务删除后的触发', null, '', () => renderTriggerField(d.deleteTrigger));
-            html += taskField('任务失败后的触发', null, '', () => renderTriggerField(d.failTrigger));
-            html += taskField('任务完成条件', null, '', () => renderConditionList(d.completeCondition, 'completeCond'));
-            html += taskField('任务完成回收道具', null, '', () => renderRemoveItem(d.removeItem));
-            html += taskField('任务完成奖励', null, '', () => renderReward(d.reward));
+            html += taskField('任务删除后的触发', null, '', () => renderTriggerField(d.deleteTrigger, 'deleteTrigger'), true, 'deleteTrigger', 'deleteTrigger', d.deleteTrigger, true);
+            html += taskField('任务失败后的触发', null, '', () => renderTriggerField(d.failTrigger, 'failTrigger'), true, 'failTrigger', 'failTrigger', d.failTrigger, true);
+            html += taskField('任务完成条件', null, '', () => renderConditionList(d.completeCondition, 'completeCond', 'completeCondition'), true, 'completeCondition', 'completeCondition', d.completeCondition, true);
+            html += taskField('任务完成回收道具', null, '', () => renderRemoveItem(d.removeItem), true, 'removeItem', 'removeItem', d.removeItem, true);
+            html += taskField('任务完成奖励', null, '', () => renderReward(d.reward), true, 'reward', 'reward', d.reward, true);
 
             html += taskField('任务完成增加好感度', null, '', () =>
-                `<input class="task-editable" type="number" value="${d.addFavor !== null ? d.addFavor : ''}" data-field="addFavor" onchange="taskFieldChanged(this)" />`
+                `<input class="task-editable" type="number" value="${d.addFavor !== null ? d.addFavor : ''}" data-field="addFavor" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" />`
             );
 
             html += taskField('任务完成触发自动领取任务ID', null, '', () => {
                 const ntId = d.nextTask ? d.nextTask.id : '';
                 const ntName = d.nextTask ? escapeHtml(d.nextTask.name) : '';
-                return `<input class="task-editable" type="number" value="${ntId}" data-field="nextTask" onchange="taskFieldChanged(this)" style="width:80px;" /><span id="nextTaskName" style="margin-left:8px;color:#a6adc8;">${ntName}</span>`;
+                return `<input class="task-editable" type="number" value="${ntId}" data-field="nextTask" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" style="width:80px;" /><span id="nextTaskName" style="margin-left:8px;color:#a6adc8;">${ntName}</span>`;
             });
 
-            html += taskField('任务完成后的条件处理', null, '', () => renderSelfAddCondition(d.selfAddCondition));
-            html += taskField('任务进行中的追踪点', null, '', () => renderTrackField(d.inProgressTrack));
-            html += taskField('任务完成后的追踪点', null, '', () => renderTrackField(d.completeTrack));
+            html += taskField('任务完成后的条件处理', null, '', () => renderSelfAddCondition(d.selfAddCondition), true, 'selfAddCondition', 'selfAddCondition', d.selfAddCondition, true);
+            html += taskField('任务进行中的追踪点', null, '', () => renderTrackField(d.inProgressTrack, 'inProgressTrack'), true, 'inProgressTrack', 'inProgressTrack', d.inProgressTrack);
+            html += taskField('任务完成后的追踪点', null, '', () => renderTrackField(d.completeTrack, 'completeTrack'), true, 'completeTrack', 'completeTrack', d.completeTrack);
 
             return html;
         }
 
-        function taskField(label, rawValue, extraClass, renderFn) {
+        function taskField(label, rawValue, extraClass, renderFn, clearable, clearFieldName, addFieldName, fieldData, addAlways) {
             const cls = 'task-field' + (extraClass ? ' ' + extraClass : '');
+            const isComplexGroup = !!addFieldName;
+            const trashHtml = (!isComplexGroup && clearable !== false) ? `<span class="task-delete-btn" onclick="clearFieldByLabel(this)">🗑</span>` : '';
+            const clearAttr = clearFieldName ? ` data-clear-field="${clearFieldName}"` : '';
+            let showAdd = false;
+            if (isComplexGroup) {
+                if (addAlways) {
+                    showAdd = true;
+                } else {
+                    const isEmpty = !fieldData || (Array.isArray(fieldData) && fieldData.length === 0);
+                    showAdd = isEmpty;
+                }
+            }
+            const addHtml = showAdd ? `<div class="task-field-add" onclick="addFieldEntry('${addFieldName}')">＋</div>` : '';
             return `<div class="${cls}">
                 <div class="task-field-label">${escapeHtml(label)}</div>
-                <div class="task-field-value">${renderFn()}</div>
+                <div class="task-field-value"${clearAttr}>${trashHtml}${renderFn()}${addHtml}</div>
             </div>`;
         }
 
-        function renderConditionList(conditions, prefix) {
+        function editableRef(table, id, name, dataField) {
+            const nameClass = name ? 'ref-name-ok' : 'ref-name-error';
+            const displayName = name || '未找到';
+            const clickAttr = name ? ` onclick="onRefClick('${table}', ${id}, this)"` : '';
+            const idStr = String(id);
+            const w = Math.max(idStr.length, 1) * 8 + 8;
+            return `[<input class="ref-id-input" type="text" value="${idStr}" style="width:${w}px;" data-table="${table}" data-ref-field="${dataField}" onblur="onRefIdChange(this)" />]<span class="${nameClass}" data-ref-name="${dataField}"${clickAttr}>${escapeHtml(displayName)}</span>`;
+        }
+
+        function renderConditionList(conditions, prefix, fieldName) {
             if (!conditions || conditions.length === 0) return '<span style="color:#6c7086;">无</span>';
             return conditions.map((c, idx) => {
-                if (c.formatError) return `<div class="task-trigger-line"><span class="error-text">⚠ 格式错误</span></div>`;
-                return `<div class="task-trigger-line"><span class="ref-link" onclick="onRefClick('Condition', ${c.id}, this)">[${c.id}]${escapeHtml(c.name)}</span>，<input class="task-editable" type="number" value="${c.min !== null ? c.min : ''}" data-field="${prefix}_${idx}_min" onchange="taskFieldChanged(this)" style="width:50px;" />，<input class="task-editable" type="number" value="${c.max !== null ? c.max : ''}" data-field="${prefix}_${idx}_max" onchange="taskFieldChanged(this)" style="width:50px;" /></div>`;
+                if (c.formatError) return `<div class="task-trigger-line"><span class="error-text">⚠ 格式错误</span><span class="task-entry-delete" onclick="removeFieldEntry('${fieldName}', ${idx})">🗑</span></div>`;
+                return `<div class="task-trigger-line">${editableRef('Condition', c.id, c.name, `${fieldName}_${idx}_id`)}，<input class="task-editable" type="number" value="${c.min !== null ? c.min : ''}" data-field="${prefix}_${idx}_min" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" style="width:50px;" />，<input class="task-editable" type="number" value="${c.max !== null ? c.max : ''}" data-field="${prefix}_${idx}_max" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" style="width:50px;" /><span class="task-entry-delete" onclick="removeFieldEntry('${fieldName}', ${idx})">🗑</span></div>`;
             }).join('');
         }
 
-        function renderTriggerField(triggers) {
+        function renderTriggerField(triggers, fieldName) {
             if (!triggers || triggers.length === 0) return '<span style="color:#6c7086;">无</span>';
-            return triggers.map(t => `<div class="task-trigger-line">${renderSingleTrigger(t)}</div>`).join('');
+            return triggers.map((t, idx) => `<div class="task-trigger-line">${renderTriggerTypeSelect(t.type, fieldName, idx)}${renderSingleTrigger(t, fieldName, idx)}<span class="task-entry-delete" onclick="removeFieldEntry('${fieldName}', ${idx})">🗑</span></div>`).join('');
         }
 
-        function renderSingleTrigger(t) {
+        function renderTriggerTypeSelect(type, fieldName, idx) {
+            return `<select class="task-select trigger-type-select" onchange="changeTriggerType('${fieldName}', ${idx}, this.value)">
+                <option value="1" ${type === 1 ? 'selected' : ''}>给道具</option>
+                <option value="2" ${type === 2 ? 'selected' : ''}>触发剧情</option>
+                <option value="3" ${type === 3 ? 'selected' : ''}>生成事件</option>
+                <option value="4" ${type === 4 ? 'selected' : ''}>修改计数器</option>
+            </select>`;
+        }
+
+        function renderSingleTrigger(t, fieldName, idx) {
             switch (t.type) {
                 case 1:
-                    return `给<span class="ref-link" onclick="onRefClick('Item', ${t.itemId}, this)">[${t.itemId}]${escapeHtml(t.itemName)}</span>${t.count}个`;
+                    return `给${editableRef('Item', t.itemId, t.itemName, `${fieldName}_${idx}_itemId`)}${t.count}个`;
                 case 2:
-                    return `触发剧情<span class="ref-link" onclick="onRefClick('Story', ${t.storyId}, this)">[${t.storyId}]${escapeHtml(t.storyName)}</span>`;
+                    return `触发剧情${editableRef('Story', t.storyId, t.storyName, `${fieldName}_${idx}_storyId`)}`;
                 case 3:
-                    return `生成事件<span class="ref-link" onclick="onRefClick('MapEvent', ${t.eventId}, this)">[${t.eventId}]${escapeHtml(t.eventName)}</span>，半径${t.eventRange}`;
+                    return `生成事件${editableRef('MapEvent', t.eventId, t.eventName, `${fieldName}_${idx}_eventId`)}，半径${t.eventRange}`;
                 case 4: {
                     let s = `将下列计数器修改至：${t.condNum}`;
                     if (t.conditions && t.conditions.length > 0) {
-                        s += '<br>' + t.conditions.map(c =>
-                            `<span class="ref-link" onclick="onRefClick('Condition', ${c.id}, this)">[${c.id}]${escapeHtml(c.name)}</span>`
+                        s += '<br>' + t.conditions.map((c, ci) =>
+                            editableRef('Condition', c.id, c.name, `${fieldName}_${idx}_cond_${ci}_id`)
                         ).join('<br>');
                     }
                     return s;
@@ -1291,40 +1586,34 @@
         function renderRemoveItem(items) {
             if (!items || items.length === 0) return '<span style="color:#6c7086;">无</span>';
             return items.map((it, idx) =>
-                `<div class="task-trigger-line">回收<span class="ref-link" onclick="onRefClick('Item', ${it.itemId}, this)">[${it.itemId}]${escapeHtml(it.name)}</span><input class="task-editable" type="number" value="${it.count}" data-field="removeItem_${idx}_count" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个</div>`
+                `<div class="task-trigger-line">回收${editableRef('Item', it.itemId, it.name, `removeItem_${idx}_itemId`)}<input class="task-editable" type="number" value="${it.count}" data-field="removeItem_${idx}_count" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个<span class="task-entry-delete" onclick="removeFieldEntry('removeItem', ${idx})">🗑</span></div>`
             ).join('');
         }
 
         function renderReward(rewards) {
             if (!rewards || rewards.length === 0) return '<span style="color:#6c7086;">无</span>';
             return rewards.map((r, idx) =>
-                `<div class="task-trigger-line">奖励<span class="ref-link" onclick="onRefClick('Item', ${r.itemId}, this)">[${r.itemId}]${escapeHtml(r.name)}</span><input class="task-editable" type="number" value="${r.count}" data-field="reward_${idx}_count" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个</div>`
+                `<div class="task-trigger-line">奖励${editableRef('Item', r.itemId, r.name, `reward_${idx}_itemId`)}<input class="task-editable" type="number" value="${r.count}" data-field="reward_${idx}_count" onfocus="showMirrorPanel(this)" onblur="hideMirrorPanel(event)" onchange="taskFieldChanged(this)" style="width:60px;margin:0 4px;" />个<span class="task-entry-delete" onclick="removeFieldEntry('reward', ${idx})">🗑</span></div>`
             ).join('');
         }
 
         function renderSelfAddCondition(items) {
             if (!items || items.length === 0) return '<span style="color:#6c7086;">无</span>';
-            return items.map(c =>
-                `<div class="task-trigger-line">修改<span class="ref-link" onclick="onRefClick('Condition', ${c.id}, this)">[${c.id}]${escapeHtml(c.name)}</span>为${c.value}</div>`
+            return items.map((c, idx) =>
+                `<div class="task-trigger-line">修改${editableRef('Condition', c.id, c.name, `selfAddCondition_${idx}_id`)}为${c.value}<span class="task-entry-delete" onclick="removeFieldEntry('selfAddCondition', ${idx})">🗑</span></div>`
             ).join('');
         }
 
-        function renderTrackField(track) {
+        function renderTrackField(track, fieldName) {
             if (!track) return '<span style="color:#6c7086;">无</span>';
             if (track.found === false) {
-                if (track.mapId) return `<span class="error-text">错误 (地图${track.mapId}-${track.x},${track.y})</span>`;
-                return `<span class="error-text">错误</span>`;
+                if (track.mapId) return `<span class="error-text">错误 (地图${track.mapId}-${track.x},${track.y})</span><span class="task-entry-delete" onclick="clearTrackField('${fieldName}')">🗑</span>`;
+                return `<span class="error-text">错误</span><span class="task-entry-delete" onclick="clearTrackField('${fieldName}')">🗑</span>`;
             }
             if (track.eventId) {
-                return `<span class="ref-link" onclick="onRefClick('MapEvent', ${track.eventId}, this)">[${track.eventId}]${escapeHtml(track.eventName)}</span>-(地图${track.mapId}-${track.x},${track.y})`;
+                return `${editableRef('MapEvent', track.eventId, track.eventName, `${fieldName}_eventId`)}-(地图${track.mapId}-${track.x},${track.y})<span class="task-entry-delete" onclick="clearTrackField('${fieldName}')">🗑</span>`;
             }
             return '<span style="color:#6c7086;">无</span>';
-        }
-
-        function selectDsc(el) {
-            document.querySelectorAll('.dsc-text.selected').forEach(e => e.classList.remove('selected'));
-            el.classList.add('selected');
-            showTaskTips('任务描述文本（Dsc字段）：<br><br>此字段为任务的描述信息，会显示在游戏中的任务面板上。<br><br>支持使用 {0}、{1} 等占位符引用参数。');
         }
 
         function taskFieldChanged(el) {
@@ -1332,6 +1621,382 @@
             const value = el.value;
             taskEditData.changes[field] = value;
             setStatus(`已修改字段: ${field} = ${value}`);
+            if (mirrorTarget === el && el.tagName === 'SELECT') {
+                const textarea = document.getElementById('taskModalTipsTextarea');
+                const selectedText = el.options[el.selectedIndex] ? el.options[el.selectedIndex].text : '';
+                textarea.value = selectedText;
+            }
+        }
+
+        async function onRefIdChange(el) {
+            const table = el.dataset.table;
+            const dataField = el.dataset.refField;
+            const newId = parseInt(el.value);
+            if (isNaN(newId)) return;
+            let newName = null;
+            try {
+                const resp = await fetch(`/api/lookup-name?table=${encodeURIComponent(table)}&id=${newId}`);
+                const result = await resp.json();
+                if (result.found) {
+                    newName = result.name;
+                }
+            } catch (e) {}
+            const d = taskEditData.original;
+            const parts = dataField.split('_');
+            if (parts[0] === 'inProgressTrack' || parts[0] === 'completeTrack') {
+                if (d[parts[0]]) {
+                    d[parts[0]].eventId = newId;
+                    d[parts[0]].eventName = newName || '';
+                    d[parts[0]].found = newName !== null;
+                }
+                taskEditData.changes[parts[0]] = buildRawField(parts[0], d[parts[0]]);
+            } else {
+                const idx = parseInt(parts[1]);
+                const arr = d[parts[0]];
+                if (Array.isArray(arr) && arr[idx]) {
+                    if (parts.length === 3) {
+                        const subField = parts[2];
+                        if (subField === 'id') {
+                            arr[idx].id = newId;
+                            arr[idx].name = newName || '';
+                        } else if (subField === 'itemId') {
+                            arr[idx].itemId = newId;
+                            arr[idx].itemName = newName || '';
+                            arr[idx].name = newName || '';
+                        } else if (subField === 'storyId') {
+                            arr[idx].storyId = newId;
+                            arr[idx].storyName = newName || '';
+                        } else if (subField === 'eventId') {
+                            arr[idx].eventId = newId;
+                            arr[idx].eventName = newName || '';
+                        }
+                    } else if (parts.length === 5 && parts[2] === 'cond') {
+                        const ci = parseInt(parts[3]);
+                        if (arr[idx].conditions && arr[idx].conditions[ci]) {
+                            arr[idx].conditions[ci].id = newId;
+                            arr[idx].conditions[ci].name = newName || '';
+                        }
+                    }
+                }
+                taskEditData.changes[parts[0]] = buildRawField(parts[0], d[parts[0]]);
+            }
+            setStatus(`已修改引用: ${dataField} = ${newId}`);
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = renderTaskDetail(d);
+        }
+
+        function onTypeChanged(el) {
+            taskFieldChanged(el);
+            const d = Object.assign({}, taskEditData.original);
+            for (const [k, v] of Object.entries(taskEditData.changes)) {
+                if (k === 'type') { d.type = parseInt(v); d.taskType = parseInt(v); }
+                else if (k === 'name') d.name = v;
+                else if (k === 'dsc') d.dsc = v;
+                else if (k === 'subType') d.subType = parseInt(v);
+                else if (k === 'difficulty') d.difficulty = parseInt(v);
+                else if (k === 'countdown') d.countdown = parseInt(v);
+                else if (k === 'isRepeat') d.isRepeat = parseInt(v);
+                else if (k === 'isHide') d.isHide = parseInt(v);
+                else if (k === 'allowDirectReturn') d.allowDirectReturn = parseInt(v);
+                else if (k === 'addFavor') d.addFavor = parseInt(v);
+                else if (v === '') {
+                    if (k === 'acceptCondition') d.acceptCondition = [];
+                    else if (k === 'completeCondition') d.completeCondition = [];
+                    else if (k === 'acceptTrigger') d.acceptTrigger = [];
+                    else if (k === 'deleteTrigger') d.deleteTrigger = [];
+                    else if (k === 'failTrigger') d.failTrigger = [];
+                    else if (k === 'removeItem') d.removeItem = [];
+                    else if (k === 'reward') d.reward = [];
+                    else if (k === 'selfAddCondition') d.selfAddCondition = [];
+                    else if (k === 'inProgressTrack') d.inProgressTrack = null;
+                    else if (k === 'completeTrack') d.completeTrack = null;
+                }
+            }
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = renderTaskDetail(d);
+            document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        function clearFieldByLabel(trashEl) {
+            const container = trashEl.parentElement;
+            const clearField = container.getAttribute('data-clear-field');
+            if (clearField) {
+                taskEditData.changes[clearField] = '';
+                setStatus(`已清空字段: ${clearField}`);
+                const d = Object.assign({}, taskEditData.original);
+                for (const [k, v] of Object.entries(taskEditData.changes)) {
+                    if (k === 'type') { d.type = parseInt(v); d.taskType = parseInt(v); }
+                    else if (k === 'name') d.name = v;
+                    else if (k === 'dsc') d.dsc = v;
+                    else if (k === 'subType') d.subType = parseInt(v);
+                    else if (k === 'difficulty') d.difficulty = parseInt(v);
+                    else if (k === 'countdown') d.countdown = parseInt(v);
+                    else if (k === 'isRepeat') d.isRepeat = parseInt(v);
+                    else if (k === 'isHide') d.isHide = parseInt(v);
+                    else if (k === 'allowDirectReturn') d.allowDirectReturn = parseInt(v);
+                    else if (k === 'addFavor') d.addFavor = parseInt(v);
+                    else if (v === '') {
+                        if (k === 'acceptCondition') d.acceptCondition = [];
+                        else if (k === 'completeCondition') d.completeCondition = [];
+                        else if (k === 'acceptTrigger') d.acceptTrigger = [];
+                        else if (k === 'deleteTrigger') d.deleteTrigger = [];
+                        else if (k === 'failTrigger') d.failTrigger = [];
+                        else if (k === 'removeItem') d.removeItem = [];
+                        else if (k === 'reward') d.reward = [];
+                        else if (k === 'selfAddCondition') d.selfAddCondition = [];
+                        else if (k === 'inProgressTrack') d.inProgressTrack = null;
+                        else if (k === 'completeTrack') d.completeTrack = null;
+                    }
+                }
+                const content = document.getElementById('taskModalContent');
+                content.innerHTML = renderTaskDetail(d);
+                document.getElementById('taskModalTips').classList.remove('visible');
+                return;
+            }
+            const input = container.querySelector('.task-editable, .task-select');
+            if (!input) return;
+            if (input.tagName === 'SELECT') {
+                input.value = input.options[0] ? input.options[0].value : '0';
+            } else if (input.type === 'number') {
+                input.value = '0';
+            } else {
+                input.value = '';
+            }
+            taskFieldChanged(input);
+            if (input.dataset.field === 'type') {
+                onTypeChanged(input);
+            }
+        }
+
+        let fieldDefaults = null;
+        async function loadFieldDefaults() {
+            if (fieldDefaults) return fieldDefaults;
+            try {
+                const res = await fetch('/api/field-defaults');
+                if (res.ok) fieldDefaults = await res.json();
+            } catch (e) {}
+            if (!fieldDefaults) {
+                fieldDefaults = {item: {id: 1, name: '未知道具'}, condition: {id: 1, name: '未知条件'}, story: {id: 1, name: '未知剧情'}, event: {id: 1, name: '未知事件'}};
+            }
+            return fieldDefaults;
+        }
+
+        async function addFieldEntry(fieldName) {
+            const defaults = await loadFieldDefaults();
+            if (!defaults) return;
+            if (!taskEditData.original) return;
+            const d = Object.assign({}, taskEditData.original);
+            for (const [k, v] of Object.entries(taskEditData.changes)) {
+                if (k === 'type') { d.type = parseInt(v); d.taskType = parseInt(v); }
+                else if (k === 'name') d.name = v;
+                else if (k === 'dsc') d.dsc = v;
+                else if (k === 'subType') d.subType = parseInt(v);
+                else if (k === 'difficulty') d.difficulty = parseInt(v);
+                else if (k === 'countdown') d.countdown = parseInt(v);
+                else if (k === 'isRepeat') d.isRepeat = parseInt(v);
+                else if (k === 'isHide') d.isHide = parseInt(v);
+                else if (k === 'allowDirectReturn') d.allowDirectReturn = parseInt(v);
+                else if (k === 'addFavor') d.addFavor = parseInt(v);
+                else if (v === '') {
+                    if (k === 'acceptCondition') d.acceptCondition = [];
+                    else if (k === 'completeCondition') d.completeCondition = [];
+                    else if (k === 'acceptTrigger') d.acceptTrigger = [];
+                    else if (k === 'deleteTrigger') d.deleteTrigger = [];
+                    else if (k === 'failTrigger') d.failTrigger = [];
+                    else if (k === 'removeItem') d.removeItem = [];
+                    else if (k === 'reward') d.reward = [];
+                    else if (k === 'selfAddCondition') d.selfAddCondition = [];
+                    else if (k === 'inProgressTrack') d.inProgressTrack = null;
+                    else if (k === 'completeTrack') d.completeTrack = null;
+                }
+            }
+            if (fieldName === 'acceptTrigger' || fieldName === 'deleteTrigger' || fieldName === 'failTrigger') {
+                const arr = Array.isArray(d[fieldName]) ? [...d[fieldName]] : [];
+                arr.push({type: 1, itemId: defaults.item.id, itemName: defaults.item.name, count: 1});
+                d[fieldName] = arr;
+            } else if (fieldName === 'removeItem') {
+                const arr = Array.isArray(d.removeItem) ? [...d.removeItem] : [];
+                arr.push({itemId: defaults.item.id, name: defaults.item.name, count: 1});
+                d.removeItem = arr;
+            } else if (fieldName === 'reward') {
+                const arr = Array.isArray(d.reward) ? [...d.reward] : [];
+                arr.push({itemId: defaults.item.id, name: defaults.item.name, count: 1});
+                d.reward = arr;
+            } else if (fieldName === 'selfAddCondition') {
+                const arr = Array.isArray(d.selfAddCondition) ? [...d.selfAddCondition] : [];
+                arr.push({id: defaults.condition.id, name: defaults.condition.name, value: 1});
+                d.selfAddCondition = arr;
+            } else if (fieldName === 'acceptCondition') {
+                const arr = Array.isArray(d.acceptCondition) ? [...d.acceptCondition] : [];
+                arr.push({id: defaults.condition.id, name: defaults.condition.name, min: 1, max: 1});
+                d.acceptCondition = arr;
+            } else if (fieldName === 'completeCondition') {
+                const arr = Array.isArray(d.completeCondition) ? [...d.completeCondition] : [];
+                arr.push({id: defaults.condition.id, name: defaults.condition.name, min: 1, max: 1});
+                d.completeCondition = arr;
+            } else if (fieldName === 'inProgressTrack') {
+                d.inProgressTrack = {found: true, eventId: defaults.event.id, eventName: defaults.event.name, mapId: 1, x: 0, y: 0};
+            } else if (fieldName === 'completeTrack') {
+                d.completeTrack = {found: true, eventId: defaults.event.id, eventName: defaults.event.name, mapId: 1, x: 0, y: 0};
+            }
+            taskEditData.original = d;
+            taskEditData.changes[fieldName] = buildRawField(fieldName, d[fieldName]);
+            setStatus(`已新增字段: ${fieldName}`);
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = renderTaskDetail(d);
+            document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        function removeFieldEntry(fieldName, index) {
+            if (!taskEditData.original) return;
+            const d = Object.assign({}, taskEditData.original);
+            for (const [k, v] of Object.entries(taskEditData.changes)) {
+                if (k === 'type') { d.type = parseInt(v); d.taskType = parseInt(v); }
+                else if (k === 'name') d.name = v;
+                else if (k === 'dsc') d.dsc = v;
+                else if (k === 'subType') d.subType = parseInt(v);
+                else if (k === 'difficulty') d.difficulty = parseInt(v);
+                else if (k === 'countdown') d.countdown = parseInt(v);
+                else if (k === 'isRepeat') d.isRepeat = parseInt(v);
+                else if (k === 'isHide') d.isHide = parseInt(v);
+                else if (k === 'allowDirectReturn') d.allowDirectReturn = parseInt(v);
+                else if (k === 'addFavor') d.addFavor = parseInt(v);
+                else if (v === '') {
+                    if (k === 'acceptCondition') d.acceptCondition = [];
+                    else if (k === 'completeCondition') d.completeCondition = [];
+                    else if (k === 'acceptTrigger') d.acceptTrigger = [];
+                    else if (k === 'deleteTrigger') d.deleteTrigger = [];
+                    else if (k === 'failTrigger') d.failTrigger = [];
+                    else if (k === 'removeItem') d.removeItem = [];
+                    else if (k === 'reward') d.reward = [];
+                    else if (k === 'selfAddCondition') d.selfAddCondition = [];
+                    else if (k === 'inProgressTrack') d.inProgressTrack = null;
+                    else if (k === 'completeTrack') d.completeTrack = null;
+                }
+            }
+            const arr = Array.isArray(d[fieldName]) ? [...d[fieldName]] : [];
+            if (index >= 0 && index < arr.length) {
+                arr.splice(index, 1);
+            }
+            d[fieldName] = arr;
+            taskEditData.original = d;
+            taskEditData.changes[fieldName] = buildRawField(fieldName, arr);
+            setStatus(`已删除字段条目: ${fieldName}[${index}]`);
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = renderTaskDetail(d);
+            document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        function clearTrackField(fieldName) {
+            if (!taskEditData.original) return;
+            const d = Object.assign({}, taskEditData.original);
+            for (const [k, v] of Object.entries(taskEditData.changes)) {
+                if (k === 'type') { d.type = parseInt(v); d.taskType = parseInt(v); }
+                else if (k === 'name') d.name = v;
+                else if (k === 'dsc') d.dsc = v;
+                else if (k === 'subType') d.subType = parseInt(v);
+                else if (k === 'difficulty') d.difficulty = parseInt(v);
+                else if (k === 'countdown') d.countdown = parseInt(v);
+                else if (k === 'isRepeat') d.isRepeat = parseInt(v);
+                else if (k === 'isHide') d.isHide = parseInt(v);
+                else if (k === 'allowDirectReturn') d.allowDirectReturn = parseInt(v);
+                else if (k === 'addFavor') d.addFavor = parseInt(v);
+                else if (v === '') {
+                    if (k === 'acceptCondition') d.acceptCondition = [];
+                    else if (k === 'completeCondition') d.completeCondition = [];
+                    else if (k === 'acceptTrigger') d.acceptTrigger = [];
+                    else if (k === 'deleteTrigger') d.deleteTrigger = [];
+                    else if (k === 'failTrigger') d.failTrigger = [];
+                    else if (k === 'removeItem') d.removeItem = [];
+                    else if (k === 'reward') d.reward = [];
+                    else if (k === 'selfAddCondition') d.selfAddCondition = [];
+                    else if (k === 'inProgressTrack') d.inProgressTrack = null;
+                    else if (k === 'completeTrack') d.completeTrack = null;
+                }
+            }
+            d[fieldName] = null;
+            taskEditData.original = d;
+            taskEditData.changes[fieldName] = '';
+            setStatus(`已清除: ${fieldName}`);
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = renderTaskDetail(d);
+            document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        async function changeTriggerType(fieldName, index, newType) {
+            const defaults = await loadFieldDefaults();
+            if (!defaults || !taskEditData.original) return;
+            const d = Object.assign({}, taskEditData.original);
+            for (const [k, v] of Object.entries(taskEditData.changes)) {
+                if (k === 'type') { d.type = parseInt(v); d.taskType = parseInt(v); }
+                else if (k === 'name') d.name = v;
+                else if (k === 'dsc') d.dsc = v;
+                else if (k === 'subType') d.subType = parseInt(v);
+                else if (k === 'difficulty') d.difficulty = parseInt(v);
+                else if (k === 'countdown') d.countdown = parseInt(v);
+                else if (k === 'isRepeat') d.isRepeat = parseInt(v);
+                else if (k === 'isHide') d.isHide = parseInt(v);
+                else if (k === 'allowDirectReturn') d.allowDirectReturn = parseInt(v);
+                else if (k === 'addFavor') d.addFavor = parseInt(v);
+                else if (v === '') {
+                    if (k === 'acceptCondition') d.acceptCondition = [];
+                    else if (k === 'completeCondition') d.completeCondition = [];
+                    else if (k === 'acceptTrigger') d.acceptTrigger = [];
+                    else if (k === 'deleteTrigger') d.deleteTrigger = [];
+                    else if (k === 'failTrigger') d.failTrigger = [];
+                    else if (k === 'removeItem') d.removeItem = [];
+                    else if (k === 'reward') d.reward = [];
+                    else if (k === 'selfAddCondition') d.selfAddCondition = [];
+                    else if (k === 'inProgressTrack') d.inProgressTrack = null;
+                    else if (k === 'completeTrack') d.completeTrack = null;
+                }
+            }
+            const arr = Array.isArray(d[fieldName]) ? [...d[fieldName]] : [];
+            const t = parseInt(newType);
+            let newEntry;
+            if (t === 1) {
+                newEntry = {type: 1, itemId: defaults.item.id, itemName: defaults.item.name, count: 1};
+            } else if (t === 2) {
+                newEntry = {type: 2, storyId: defaults.story.id, storyName: defaults.story.name};
+            } else if (t === 3) {
+                newEntry = {type: 3, eventId: defaults.event.id, eventName: defaults.event.name, eventRange: 1};
+            } else if (t === 4) {
+                newEntry = {type: 4, condNum: 1, conditions: [{id: defaults.condition.id, name: defaults.condition.name}]};
+            }
+            if (newEntry && index >= 0 && index < arr.length) {
+                arr[index] = newEntry;
+            }
+            d[fieldName] = arr;
+            taskEditData.original = d;
+            taskEditData.changes[fieldName] = buildRawField(fieldName, arr);
+            const content = document.getElementById('taskModalContent');
+            content.innerHTML = renderTaskDetail(d);
+            document.getElementById('taskModalTips').classList.remove('visible');
+        }
+
+        function buildRawField(fieldName, data) {
+            if (!data || (Array.isArray(data) && data.length === 0)) return '';
+            if (fieldName === 'acceptTrigger' || fieldName === 'deleteTrigger' || fieldName === 'failTrigger') {
+                return data.map(t => {
+                    if (t.type === 1) return `1,${t.itemId},${t.count}`;
+                    if (t.type === 2) return `2,${t.storyId}`;
+                    if (t.type === 3) return `3,${t.eventId},${t.eventRange}`;
+                    if (t.type === 4) return `4,${t.condNum},${(t.conditions || []).map(c => c.id).join(',')}`;
+                    return t.raw || '';
+                }).join(';');
+            } else if (fieldName === 'removeItem') {
+                return data.map(it => `${it.itemId},${it.count}`).join(';');
+            } else if (fieldName === 'reward') {
+                return data.map(r => `${r.itemId},${r.count}`).join(';');
+            } else if (fieldName === 'selfAddCondition') {
+                return data.map(c => `${c.id},${c.value}`).join(';');
+            } else if (fieldName === 'acceptCondition' || fieldName === 'completeCondition') {
+                return data.map(c => `${c.id},${c.min !== null ? c.min : ''},${c.max !== null ? c.max : ''}`).join(';');
+            } else if (fieldName === 'inProgressTrack' || fieldName === 'completeTrack') {
+                if (data && data.mapId !== undefined) return `${data.mapId},${data.x},${data.y}`;
+                return '';
+            }
+            return '';
         }
 
         function closeDetail() {
@@ -1347,6 +2012,19 @@
         document.getElementById('folderInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') loadFolder();
         });
+
+        (async function autoLoadFolder() {
+            try {
+                const res = await fetch('/api/current-folder');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.path) {
+                        document.getElementById('folderInput').value = data.path;
+                        loadFolder();
+                    }
+                }
+            } catch (e) {}
+        })();
 
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'z') {

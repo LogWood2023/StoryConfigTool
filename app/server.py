@@ -7,11 +7,28 @@ import pandas as pd
 import re
 import os
 import shutil
+from datetime import datetime
 from openpyxl import load_workbook
+
+import json
 
 app = FastAPI()
 
 DATA_DIR = None
+_CONFIG_FILE = os.path.join(os.path.dirname(__file__), ".last_folder")
+
+def _load_last_folder():
+    global DATA_DIR
+    if os.path.exists(_CONFIG_FILE):
+        try:
+            with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+                path = f.read().strip()
+            if path and os.path.isdir(path):
+                DATA_DIR = path
+        except Exception:
+            pass
+
+_load_last_folder()
 
 
 class FolderRequest(BaseModel):
@@ -810,6 +827,11 @@ def get_realm_level_options(folder_path: str) -> list:
     return [{"id": k, "name": v} for k, v in rl_map.items()]
 
 
+@app.get("/api/current-folder")
+async def get_current_folder():
+    return {"path": DATA_DIR}
+
+
 @app.post("/api/set-folder")
 async def set_folder(req: FolderRequest):
     global DATA_DIR
@@ -820,6 +842,11 @@ async def set_folder(req: FolderRequest):
     if not os.path.exists(story_file):
         raise HTTPException(status_code=400, detail="StoryGroup.xlsx not found in the specified folder")
     DATA_DIR = folder
+    try:
+        with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
+            f.write(folder)
+    except Exception:
+        pass
     return {"status": "ok", "path": DATA_DIR}
 
 
@@ -903,6 +930,42 @@ async def get_realm_level_opts():
     return get_realm_level_options(DATA_DIR)
 
 
+@app.get("/api/field-defaults")
+async def get_field_defaults():
+    if DATA_DIR is None:
+        raise HTTPException(status_code=400, detail="No folder configured.")
+    item_map = lookup_table(DATA_DIR, "Item.xlsx", "item", "Id")
+    condition_map = read_conditions(DATA_DIR)
+    story_map = lookup_table(DATA_DIR, "Story.xlsx", "Sheet1", "Id")
+    map_events_by_id, _ = lookup_map_events(DATA_DIR)
+    first_item_id = None
+    first_item_name = ""
+    if item_map:
+        first_item_id = min(item_map.keys())
+        first_item_name = item_map[first_item_id]
+    first_cond_id = None
+    first_cond_name = ""
+    if condition_map:
+        first_cond_id = min(condition_map.keys())
+        first_cond_name = condition_map[first_cond_id]["name"]
+    first_story_id = None
+    first_story_name = ""
+    if story_map:
+        first_story_id = min(story_map.keys())
+        first_story_name = story_map[first_story_id]
+    first_event_id = None
+    first_event_name = ""
+    if map_events_by_id:
+        first_event_id = min(map_events_by_id.keys())
+        first_event_name = map_events_by_id[first_event_id].get("desc", "")
+    return {
+        "item": {"id": first_item_id, "name": first_item_name},
+        "condition": {"id": first_cond_id, "name": first_cond_name},
+        "story": {"id": first_story_id, "name": first_story_name},
+        "event": {"id": first_event_id, "name": first_event_name},
+    }
+
+
 class ExportRequest(BaseModel):
     changes: Dict[str, Any]
 
@@ -916,12 +979,43 @@ FIELD_TO_COL = {
 }
 
 
+@app.get("/api/lookup-name")
+async def lookup_name(table: str, id: int):
+    if DATA_DIR is None:
+        raise HTTPException(status_code=400, detail="No folder configured.")
+    name = None
+    if table == "Item":
+        item_map = lookup_table(DATA_DIR, "Item.xlsx", "item", "Id")
+        name = item_map.get(id)
+    elif table == "Condition":
+        cond_map = read_conditions(DATA_DIR)
+        cond = cond_map.get(id)
+        if cond:
+            name = cond["name"]
+    elif table == "Story":
+        story_map = lookup_table(DATA_DIR, "Story.xlsx", "Sheet1", "Id")
+        name = story_map.get(id)
+    elif table == "MapEvent":
+        map_events_by_id, _ = lookup_map_events(DATA_DIR)
+        ev = map_events_by_id.get(id)
+        if ev:
+            name = ev.get("desc", "")
+    elif table == "Task":
+        task_map = lookup_table(DATA_DIR, "Task.xlsx", "Sheet1", "Id")
+        name = task_map.get(id)
+    if name is None:
+        return {"found": False}
+    return {"found": True, "name": name}
+
+
 @app.post("/api/export")
 async def export_changes(req: ExportRequest):
     if DATA_DIR is None:
         raise HTTPException(status_code=400, detail="No folder configured.")
 
-    export_dir = os.path.join(os.path.dirname(__file__), "导出文件")
+    export_base = os.path.join(os.path.dirname(__file__), "导出文件")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    export_dir = os.path.join(export_base, timestamp)
     os.makedirs(export_dir, exist_ok=True)
 
     files_to_modify = {}
@@ -977,8 +1071,32 @@ async def export_changes(req: ExportRequest):
         id_col_idx = col_map.get("Id") or col_map.get("EventId")
         for item in items:
             task_id = item.get("taskId")
+            is_delete = item.get("_delete", False)
+            is_new = item.get("_new", False)
             changes = item.get("changes", {})
-            if not task_id or not changes:
+            if not task_id:
+                continue
+            if not is_delete and not is_new and not changes:
+                continue
+
+            if is_new:
+                new_row = ws.max_row + 1
+                ws.cell(row=new_row, column=id_col_idx).value = task_id
+                for field, value in changes.items():
+                    if field in ("acceptCondition", "completeCondition", "acceptTrigger", "deleteTrigger", "failTrigger", "removeItem", "reward", "selfAddCondition", "inProgressTrack", "completeTrack"):
+                        col_map_name = {
+                            "acceptCondition": "AcceptCondition", "completeCondition": "CompleteCondition",
+                            "acceptTrigger": "AcceptTrigger", "deleteTrigger": "DeleteTrigger",
+                            "failTrigger": "FailTrigger", "removeItem": "RemoveItem",
+                            "reward": "Reward", "selfAddCondition": "SelfAddCondition",
+                            "inProgressTrack": "InProgressTrack", "completeTrack": "CompleteTrack",
+                        }.get(field)
+                        if col_map_name and col_map_name in col_map:
+                            ws.cell(row=new_row, column=col_map[col_map_name]).value = None if value == '' else value
+                    else:
+                        col_name = FIELD_TO_COL.get(field)
+                        if col_name and col_name in col_map:
+                            ws.cell(row=new_row, column=col_map[col_name]).value = value
                 continue
 
             target_row = None
@@ -995,8 +1113,24 @@ async def export_changes(req: ExportRequest):
             if target_row is None:
                 continue
 
+            if is_delete:
+                ws.delete_rows(target_row)
+                continue
+
             for field, value in changes.items():
-                if field.startswith("acceptCond_") or field.startswith("completeCond_"):
+                if field in ("acceptCondition", "completeCondition", "acceptTrigger", "deleteTrigger", "failTrigger", "removeItem", "reward", "selfAddCondition", "inProgressTrack", "completeTrack"):
+                    col_map_name = {
+                        "acceptCondition": "AcceptCondition", "completeCondition": "CompleteCondition",
+                        "acceptTrigger": "AcceptTrigger", "deleteTrigger": "DeleteTrigger",
+                        "failTrigger": "FailTrigger", "removeItem": "RemoveItem",
+                        "reward": "Reward", "selfAddCondition": "SelfAddCondition",
+                        "inProgressTrack": "InProgressTrack", "completeTrack": "CompleteTrack",
+                    }.get(field)
+                    if col_map_name:
+                        col_idx = col_map.get(col_map_name)
+                        if col_idx:
+                            ws.cell(row=target_row, column=col_idx).value = None if value == '' else value
+                elif field.startswith("acceptCond_") or field.startswith("completeCond_"):
                     parts = field.split("_")
                     prefix = parts[0]
                     idx = int(parts[1])
@@ -1073,7 +1207,7 @@ async def export_changes(req: ExportRequest):
         wb.save(dst_path)
         exported_files.append(file_name)
 
-    return {"message": f"已导出 {len(exported_files)} 个文件到 app/导出文件", "files": exported_files}
+    return {"message": f"已导出 {len(exported_files)} 个文件到 app/导出文件/{timestamp}", "files": exported_files}
 
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
